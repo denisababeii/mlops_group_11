@@ -1,4 +1,4 @@
-name: Code linting
+name: Code Linting
 
 on:
   push:
@@ -9,31 +9,26 @@ on:
       - main
 
 jobs:
-  format:
+  lint:
     name: Check code formatting
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          python-version: '3.12'
+
+      - name: Install UV
+        run: pip install uv
 
       - name: Install dependencies
-        run: |
-          python -m pip install -U pip setuptools wheel
-          pip install -r requirements.txt
-          pip install -r requirements_dev.txt
-          pip list
+        run: uv sync --locked
 
-      - name: ruff check
-        run: |
-          ruff check .
+      - name: Run ruff check
+        run: uv run ruff check .
 
-      - name: ruff format
-        run: |
-          ruff format .
+      - name: Run ruff format check
+        run: uv run ruff format --check .
