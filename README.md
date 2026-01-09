@@ -1,6 +1,14 @@
 # mlops_group_11
 
-Description
+The goal of this project is to develop and train a machine learning model capable of classifying movie genres based on movie poster images. 
+
+The dataset used in this project consists of a collection of movie poster images and a CSV file that maps image IDs to their corresponding genres. Although the original image repository contains 7,867 poster images, we only use the 7,254 images that are referenced in the CSV file, to have the images' associated genre labels. 
+
+In total, the dataset includes 24 distinct genre classifications, as well as an additional “N/A” category for posters whose genre information is missing or unspecified. This diversity of labels presents a multi-class classification problem and allows for a comprehensive evaluation of the model’s performance across a wide range of genres.
+
+To train and evaluate the model, the dataset will be split into training and testing subsets. 90% of the data will be used for training the model, while the remaining 10% will be reserved for testing.
+
+The poster images will be normalized and used to train a convolutional neural network (CNN) to perform multi-class classification across the 25 genre labels.
 
 ## Project structure
 
