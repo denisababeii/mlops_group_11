@@ -1,17 +1,29 @@
 # mlops_group_11
 
+## Machine Learning goal
 The goal of this project is to develop and train a machine learning model capable of classifying movie genres based on movie poster images. 
 
+## Dataset
 The dataset used in this project consists of a collection of movie poster images and a CSV file that maps image IDs to their corresponding genres. Although the original image repository contains 7,867 poster images, we only use the 7,254 images that are referenced in the CSV file, to have the images' associated genre labels. 
 
 In total, the dataset includes 24 distinct genre classifications, as well as an additional “N/A” category for posters whose genre information is missing or unspecified. This diversity of labels presents a multi-class classification problem and allows for a comprehensive evaluation of the model’s performance across a wide range of genres.
 
+The poster images will be resized, normalized and used to train the model for multi-class classification across the 25 genre labels. 
+
+## Modelling
+We will leverage a pretrained model from the PyTorch Image Models (timm) library and fine-tune it for this specific task. We are planning to try various models and decide the final option based on the performance. Some models we are considering are timm/csatv2_21m.sw_r512_in1k, timm/resnet50.a1_in1k, timm/resnet32ts.ra2_in1k.
+
+## Training
 To train and evaluate the model, the dataset will be split into training and testing subsets. 90% of the data will be used for training the model, while the remaining 10% will be reserved for testing.
 
-The poster images will be resized, normalized and used to train the model for multi-class classification across the 25 genre labels. We will leverage a pretrained model from the PyTorch Image Models (timm) library and fine-tune it for this specific task.
+## Tools & Frameworks
+We have used [mlops_template](https://github.com/SkafteNicki/mlops_template),
+a [cookiecutter template](https://github.com/cookiecutter/cookiecutter) for getting
+started with Machine Learning Operations (MLOps).
+
+We are planning to use PyTorch Image Models (timm) for modelling with a pretrained model, Hydra for configuration, Weights & Biases for logging and visualizations, Docker for containerization.
 
 ## Project structure
-
 The directory structure of the project looks like this:
 ```txt
 ├── .github/                  # Github actions and dependabot
@@ -56,8 +68,3 @@ The directory structure of the project looks like this:
 ├── requirements_dev.txt      # Development requirements
 └── tasks.py                  # Project tasks
 ```
-
-
-Created using [mlops_template](https://github.com/SkafteNicki/mlops_template),
-a [cookiecutter template](https://github.com/cookiecutter/cookiecutter) for getting
-started with Machine Learning Operations (MLOps).
