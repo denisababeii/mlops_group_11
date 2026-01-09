@@ -1,6 +1,6 @@
 # mlops_group_11
 
-## Machine Learning goal
+## Machine Learning Goal
 The goal of this project is to develop and train a machine learning model capable of classifying movie genres based on movie poster images. 
 
 ## Dataset
