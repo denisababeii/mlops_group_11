@@ -1,19 +1,27 @@
-from torch import nn
+import timm
 import torch
+import torch.nn as nn
 
 
-class Model(nn.Module):
-    """Just a dummy model to show how to structure your code"""
+def create_timm_model(name: str = "csatv2_21m.sw_r512_in1k", pretrained: bool = True, num_classes=24) -> nn.Module:
+    """Create and return a timm model by name.
 
-    def __init__(self):
-        super().__init__()
-        self.layer = nn.Linear(1, 1)
+    Args:
+        name: model identifier for `timm.create_model`.
+        pretrained: whether to load pretrained weights.
+        num_classes: number of output classes for the model.
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.layer(x)
+    Returns:
+        A `torch.nn.Module` model instance.
+    """
+    return timm.create_model(name, pretrained=pretrained, num_classes=num_classes)
 
 
 if __name__ == "__main__":
-    model = Model()
-    x = torch.rand(1)
-    print(f"Output shape of model: {model(x).shape}")
+    model = create_timm_model()
+    print(f"Model architecture: {model}")
+    print(f"Number of parameters: {sum(p.numel() for p in model.parameters())}")
+
+    x = torch.rand(1, 3, 512, 512)
+    out = model(x)
+    print(f"Output shape of model: {out.shape}")
