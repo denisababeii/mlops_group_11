@@ -8,7 +8,7 @@ In total, the dataset includes 24 distinct genre classifications, as well as an 
 
 To train and evaluate the model, the dataset will be split into training and testing subsets. 90% of the data will be used for training the model, while the remaining 10% will be reserved for testing.
 
-The poster images will be normalized and used to train a convolutional neural network (CNN) to perform multi-class classification across the 25 genre labels.
+The poster images will be resized, normalized and used to train the model for multi-class classification across the 25 genre labels. We will leverage a pretrained model from the PyTorch Image Models (timm) library and fine-tune it for this specific task.
 
 ## Project structure
 
