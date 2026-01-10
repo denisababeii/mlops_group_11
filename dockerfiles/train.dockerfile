@@ -1,4 +1,5 @@
 # To build the image run 'docker build -f dockerfiles/train.dockerfile . -t train:latest' in the mlops_group_11 directory
+# To run inside the container run 'docker run --name container-name train:latest'
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 RUN apt update && \
@@ -16,5 +17,5 @@ COPY configs configs/
 WORKDIR /
 ENV UV_LINK_MODE=copy
 RUN uv sync --no-cache --no-install-project
-# RUN --mount=type=cache,target=/root/.cache/uv uv sync
+# RUN --mount=type=cache,target=/root/.cache/uv uv sync # Comment above and uncomment this to use cache
 ENTRYPOINT ["uv", "run", "src/mlops_group_11/train.py"]
