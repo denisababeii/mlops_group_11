@@ -16,6 +16,6 @@ COPY configs configs/
 
 WORKDIR /
 ENV UV_LINK_MODE=copy
-RUN uv sync --no-cache --no-install-project
+RUN uv sync --locked --no-cache --no-install-project
 # RUN --mount=type=cache,target=/root/.cache/uv uv sync # Comment above and uncomment this to use cache
 ENTRYPOINT ["uv", "run", "src/mlops_group_11/train.py"]
