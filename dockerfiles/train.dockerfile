@@ -1,4 +1,4 @@
-# To build the image run docker 'build -f dockerfiles/train.dockerfile . -t train:latest' in the mlops_group_11 directory
+# To build the image run 'docker build -f dockerfiles/train.dockerfile . -t train:latest' in the mlops_group_11 directory
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 RUN apt update && \
