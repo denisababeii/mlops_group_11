@@ -1,11 +1,13 @@
 # from mlops_group_11.model import Model
 # from mlops_group_11.data import MyDataset
 
+
 def train():
     # dataset = MyDataset("data/raw")
     # model = Model()
     # add rest of your training code here
-    print('Training')
+    print("Training")
+
 
 if __name__ == "__main__":
     train()
