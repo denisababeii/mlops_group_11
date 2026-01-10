@@ -3,7 +3,8 @@ import torch
 from model import create_timm_model
 import hydra
 
-#from data import movie_posters # TBD: Import training set here
+# from data import movie_posters # TBD: Import training set here
+
 
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs")
 def evaluate(cfg) -> None:
@@ -14,7 +15,7 @@ def evaluate(cfg) -> None:
     model.load_state_dict(torch.load(cfg.hyperparameters.checkpoint_file, map_location=device))
     model.to(device)
 
-    _, test_set = [] # TBD: Add training set here
+    _, test_set = []  # TBD: Add training set here
     testloader = torch.utils.data.DataLoader(test_set, batch_size=cfg.hyperparameters.batch_size, shuffle=True)
 
     model.eval()

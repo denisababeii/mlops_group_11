@@ -5,7 +5,8 @@ from model import create_timm_model
 from torch import nn, optim
 import hydra
 
-#from data import movie_posters # TBD: Import training set here
+# from data import movie_posters # TBD: Import training set here
+
 
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs")
 def train(cfg) -> None:
@@ -13,7 +14,7 @@ def train(cfg) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = create_timm_model().to(device)
-    train_set, _ = [] # TBD: Add training set here
+    train_set, _ = []  # TBD: Add training set here
 
     trainloader = torch.utils.data.DataLoader(train_set, batch_size=cfg.hyperparameters.batch_size, shuffle=True)
 
