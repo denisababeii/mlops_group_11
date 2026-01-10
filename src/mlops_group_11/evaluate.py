@@ -1,7 +1,8 @@
 import os
+
+import hydra
 import torch
 from model import create_timm_model
-import hydra
 
 # from data import movie_posters # TBD: Import training set here
 
