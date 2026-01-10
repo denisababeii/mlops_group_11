@@ -7,10 +7,9 @@ import hydra
 
 #from data import movie_posters # TBD: Import training set here
 
-@hydra.main(config_name="training_conf.yaml", config_path=f"{os.getcwd()}/configs")
+@hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs")
 def train(cfg) -> None:
     """Train the model."""
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = create_timm_model().to(device)
@@ -41,7 +40,7 @@ def train(cfg) -> None:
             optimizer.step()
 
             probs = torch.sigmoid(logits)
-            preds = (probs > 0.5).int()
+            preds = (probs > cfg.hyperparameters.prob_threshold).int()
 
             epoch_loss += loss.item() * labels.numel()
             epoch_correct += (preds == labels).sum().item()
@@ -52,14 +51,14 @@ def train(cfg) -> None:
 
     print("Training complete")
 
-    torch.save(model.state_dict(), "models/model.pth")
+    torch.save(model.state_dict(), cfg.hyperparameters.checkpoint_file)
 
     fig, axs = plt.subplots(1, 2, figsize=(15, 5))
     axs[0].plot(train_loss)
     axs[0].set_title("Train loss")
     axs[1].plot(train_accuracy)
     axs[1].set_title("Train accuracy")
-    fig.savefig("reports/figures/training_statistics.png")
+    fig.savefig(cfg.hyperparameters.reports_file)
 
 
 if __name__ == "__main__":

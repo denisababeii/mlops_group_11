@@ -1,0 +1,7 @@
+hyperparameters:
+  batch_size: 32
+  lr: 0.001
+  epochs: 10
+  checkpoint_file: "models/model.pth"
+  reports_file: "reports/figures/training_statistics.png"
+  prob_threshold: 0.5

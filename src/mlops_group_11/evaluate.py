@@ -1,24 +1,21 @@
+import os
 import torch
-import typer
 from model import create_timm_model
+import hydra
 
-from data import movie_posters
+#from data import movie_posters # TBD: Import training set here
 
-app = typer.Typer()
-
-
-@app.command()
-def evaluate(model_checkpoint: str = "models/model.pth") -> None:
+@hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs")
+def evaluate(cfg) -> None:
     """Evaluate a trained model."""
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = create_timm_model()
-    model.load_state_dict(torch.load(model_checkpoint, map_location=device))
+    model.load_state_dict(torch.load(cfg.hyperparameters.checkpoint_file, map_location=device))
     model.to(device)
 
-    _, test_set = movie_posters()
-    testloader = torch.utils.data.DataLoader(test_set, batch_size=32, shuffle=True)
+    _, test_set = [] # TBD: Add training set here
+    testloader = torch.utils.data.DataLoader(test_set, batch_size=cfg.hyperparameters.batch_size, shuffle=True)
 
     model.eval()
     correct = 0
@@ -29,7 +26,7 @@ def evaluate(model_checkpoint: str = "models/model.pth") -> None:
 
             logits = model(images)
             probs = torch.sigmoid(logits)
-            preds = (probs > 0.5).int()
+            preds = (probs > cfg.hyperparameters.prob_threshold).int()
 
             correct += (preds == labels).sum().item()
 
@@ -37,4 +34,4 @@ def evaluate(model_checkpoint: str = "models/model.pth") -> None:
 
 
 if __name__ == "__main__":
-    typer.run(evaluate)
+    evaluate()
