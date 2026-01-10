@@ -1,9 +1,10 @@
 import os
+
+import hydra
 import matplotlib.pyplot as plt
 import torch
 from model import create_timm_model
 from torch import nn, optim
-import hydra
 
 # from data import movie_posters # TBD: Import training set here
 
