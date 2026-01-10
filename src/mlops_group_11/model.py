@@ -3,7 +3,9 @@ import torch
 import torch.nn as nn
 
 
-def create_timm_model(name: str = "csatv2_21m.sw_r512_in1k", pretrained: bool = True, num_classes=24) -> nn.Module:
+def create_timm_model(
+    name: str = "csatv2_21m.sw_r512_in1k", pretrained: bool = True, num_classes: int = 24
+) -> nn.Module:
     """Create and return a timm model by name.
 
     Args:

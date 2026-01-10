@@ -3,12 +3,13 @@ import os
 import hydra
 import torch
 from model import create_timm_model
+from omegaconf import DictConfig
 
 # from data import movie_posters # TBD: Import training set here
 
 
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs")
-def evaluate(cfg) -> None:
+def evaluate(cfg: DictConfig) -> None:
     """Evaluate a trained model."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -20,7 +21,7 @@ def evaluate(cfg) -> None:
     testloader = torch.utils.data.DataLoader(test_set, batch_size=cfg.hyperparameters.batch_size, shuffle=True)
 
     model.eval()
-    correct = 0
+    correct: int = 0
     with torch.no_grad():
         for images, labels in testloader:
             images = images.to(device)
