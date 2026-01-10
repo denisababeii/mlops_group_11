@@ -1,16 +1,18 @@
 import os
+from typing import Any
 
 import hydra
 import matplotlib.pyplot as plt
 import torch
 from model import create_timm_model
+from omegaconf import DictConfig
 from torch import nn, optim
 
 # from data import movie_posters # TBD: Import training set here
 
 
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs")
-def train(cfg) -> None:
+def train(cfg: DictConfig) -> None:
     """Train the model."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -22,13 +24,14 @@ def train(cfg) -> None:
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), cfg.hyperparameters.lr)
 
-    train_loss, train_accuracy = [], []
+    train_loss: list[float] = []
+    train_accuracy: list[float] = []
 
     for _ in range(cfg.hyperparameters.epochs):
         model.train()
-        epoch_loss = 0.0
-        epoch_correct = 0
-        n = 0
+        epoch_loss: float = 0.0
+        epoch_correct: int = 0
+        n: int = 0
 
         for images, labels in trainloader:
             images = images.to(device)
