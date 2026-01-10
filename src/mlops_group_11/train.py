@@ -1,31 +1,29 @@
+import os
 import matplotlib.pyplot as plt
 import torch
-import typer
 from model import create_timm_model
 from torch import nn, optim
+import hydra
 
-from data import movie_posters
+#from data import movie_posters # TBD: Import training set here
 
-app = typer.Typer()
-
-
-@app.command()
-def train(lr: float = 1e-3, batch_size: int = 32, epochs: int = 10) -> None:
+@hydra.main(config_name="training_conf.yaml", config_path=f"{os.getcwd()}/configs")
+def train(cfg) -> None:
     """Train the model."""
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = create_timm_model().to(device)
-    train_set, _ = movie_posters()
+    train_set, _ = [] # TBD: Add training set here
 
-    trainloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    trainloader = torch.utils.data.DataLoader(train_set, batch_size=cfg.hyperparameters.batch_size, shuffle=True)
 
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr)
+    optimizer = optim.Adam(model.parameters(), cfg.hyperparameters.lr)
 
     train_loss, train_accuracy = [], []
 
-    for _ in range(epochs):
+    for _ in range(cfg.hyperparameters.epochs):
         model.train()
         epoch_loss = 0.0
         epoch_correct = 0
@@ -65,4 +63,4 @@ def train(lr: float = 1e-3, batch_size: int = 32, epochs: int = 10) -> None:
 
 
 if __name__ == "__main__":
-    typer.run(train)
+    train()
