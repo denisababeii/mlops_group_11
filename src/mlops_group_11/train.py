@@ -1,31 +1,29 @@
+import os
 import matplotlib.pyplot as plt
 import torch
-import typer
 from model import create_timm_model
 from torch import nn, optim
+import hydra
 
-from data import movie_posters
-
-app = typer.Typer()
+# from data import movie_posters # TBD: Import training set here
 
 
-@app.command()
-def train(lr: float = 1e-3, batch_size: int = 32, epochs: int = 10) -> None:
+@hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs")
+def train(cfg) -> None:
     """Train the model."""
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = create_timm_model().to(device)
-    train_set, _ = movie_posters()
+    train_set, _ = []  # TBD: Add training set here
 
-    trainloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    trainloader = torch.utils.data.DataLoader(train_set, batch_size=cfg.hyperparameters.batch_size, shuffle=True)
 
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr)
+    optimizer = optim.Adam(model.parameters(), cfg.hyperparameters.lr)
 
     train_loss, train_accuracy = [], []
 
-    for _ in range(epochs):
+    for _ in range(cfg.hyperparameters.epochs):
         model.train()
         epoch_loss = 0.0
         epoch_correct = 0
@@ -43,7 +41,7 @@ def train(lr: float = 1e-3, batch_size: int = 32, epochs: int = 10) -> None:
             optimizer.step()
 
             probs = torch.sigmoid(logits)
-            preds = (probs > 0.5).int()
+            preds = (probs > cfg.hyperparameters.prob_threshold).int()
 
             epoch_loss += loss.item() * labels.numel()
             epoch_correct += (preds == labels).sum().item()
@@ -54,15 +52,15 @@ def train(lr: float = 1e-3, batch_size: int = 32, epochs: int = 10) -> None:
 
     print("Training complete")
 
-    torch.save(model.state_dict(), "models/model.pth")
+    torch.save(model.state_dict(), cfg.hyperparameters.checkpoint_file)
 
     fig, axs = plt.subplots(1, 2, figsize=(15, 5))
     axs[0].plot(train_loss)
     axs[0].set_title("Train loss")
     axs[1].plot(train_accuracy)
     axs[1].set_title("Train accuracy")
-    fig.savefig("reports/figures/training_statistics.png")
+    fig.savefig(cfg.hyperparameters.reports_file)
 
 
 if __name__ == "__main__":
-    typer.run(train)
+    train()
