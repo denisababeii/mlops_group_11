@@ -40,8 +40,8 @@ class MyDataset(Dataset):
         image = self.transform(image)
 
         target = torch.tensor(
-            row[self.genre_columns].astype(float).values,
-            dtype=torch.float32
+            row[self.genre_columns].astype(int).values,
+            dtype=torch.int64
         )
 
         return image, target
@@ -90,8 +90,8 @@ class MyDataset(Dataset):
             image = self.transform(image)
 
             target = torch.tensor(
-                row[self.genre_columns].astype(float).values,
-                dtype=torch.float32
+                row[self.genre_columns].astype(int).values,
+                dtype=torch.int64
             )
 
             images.append(image)
