@@ -40,7 +40,7 @@ class MyDataset(Dataset):
         image = self.transform(image)
 
         target = torch.tensor(
-            row[self.genre_columns].values,
+            row[self.genre_columns].astype(float).values,
             dtype=torch.float32
         )
 
@@ -90,7 +90,7 @@ class MyDataset(Dataset):
             image = self.transform(image)
 
             target = torch.tensor(
-                row[self.genre_columns].values,
+                row[self.genre_columns].astype(float).values,
                 dtype=torch.float32
             )
 
