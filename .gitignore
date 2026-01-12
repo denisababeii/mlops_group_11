@@ -99,8 +99,11 @@ target/
 profile_default/
 ipython_config.py
 
-# Ignore all data files
+# Ignore everything inside data (keeping the folders)
 data/**
+!data/
+!data/raw/
+!data/processed/
 
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
