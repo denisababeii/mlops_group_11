@@ -2,7 +2,7 @@ name: Docker Image continuous integration
 
 on:
   push:
-    branches: [ main ]
+    branches: [ db/add-docker-workflow ]
 
 jobs:
   build:
