@@ -1,38 +1,90 @@
+"Data loading and preprocessing for movie poster dataset."
+
 from pathlib import Path
-import typer
-from torch.utils.data import Dataset, TensorDataset
+from typing import Optional, Tuple
+
 import json
-import torch
-import pandas as pd
-from PIL import Image
-from sklearn.model_selection import train_test_split
-from torchvision import transforms
+import shutil
 import subprocess
 import zipfile
-import shutil
+
+import pandas as pd
+import torch
+import typer
+from PIL import Image
+from sklearn.model_selection import train_test_split
+from torch.utils.data import Dataset, TensorDataset
+from torchvision import transforms
 
 class MyDataset(Dataset):
-    """Raw movie poster dataset (multi-label)."""
+    """Raw movie poster dataset (multi-label classification).
 
-    def __init__(self, data_path: Path, image_size: int = 224):
-        self.data_path = data_path
+    Args:
+        data_path: Path to the dataset folder containing `train.csv` and `Images/`.
+        image_size: Size to which images are resized (default: 224).
+        use_imagenet_norm: Apply ImageNet normalization to images (default: True).
+        exclude_genres: List of genre names to exclude (default: ['N/A']).
+    
+    Attributes:
+        data_path: Path to the dataset folder.
+        image_size: Image dimensions.
+        df: DataFrame containing image IDs and labels.
+        genre_columns: List of genre label columns.
+        transform: Image transformation pipeline.
+
+    """
+    def __init__(self, data_path: Path, image_size: int = 224, use_imagenet_norm: bool = True, exclude_genres: list = None) -> None:
+        self.data_path = Path(data_path)
         self.image_size = image_size
+        self.use_imagenet_norm = use_imagenet_norm
 
-        self.df = pd.read_csv(data_path / "train.csv")
+        self.df = pd.read_csv(self.data_path / "train.csv")
 
-        # Genre columns = everything except Id and Genre strings
-        self.genre_columns = self.df.columns.drop(["Id", "Genre"])
+        # Filter out N/A and other unwanted columns
+        base_exclude = ["Id", "Genre"]
+        if exclude_genres is None:
+            exclude_genres = ["N/A"]  # Default: exclude N/A
+        
+        exclude_columns = base_exclude + exclude_genres
 
-        self.transform = transforms.Compose([
+        # Genre columns = everything except excluded ones
+        self.genre_columns = self.df.columns.drop(exclude_columns)
+
+        # Log information
+        print(f"Using {len(self.genre_columns)} genres: {list(self.genre_columns)}")
+        if "N/A" in self.df.columns and "N/A" in exclude_columns:
+            print("'N/A' column found and excluded")
+
+        # Build transformation pipeline
+        transform_list = [
             transforms.Resize((image_size, image_size)),
             transforms.ToTensor(),
-        ])
+        ]
 
-    def __len__(self):
+        # Transformation pipeline
+        if use_imagenet_norm:
+            transform_list.append(transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],   # ImageNet statistics
+                std=[0.229, 0.224, 0.225]
+            ))
+        self.transform = transforms.Compose(transform_list)
+
+    def __len__(self) -> int:
+        """Returns the number of samples in the dataset."""
         return len(self.df)
 
     # Gets image and its label(s) at specific index
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """ Get image and its labels at index `idx`.
+        
+        Args:
+            idx: Sample index.
+
+        Returns:
+            A tuple of (image tensor, target tensor)
+            - image tensor: shape (3, H, W), float32
+            - label_tensor: shape (num_genres,), float32 (hot encoded)
+        """
         row = self.df.iloc[idx]
 
         img_path = self.data_path / "Images" / f"{row['Id']}.jpg"
@@ -41,42 +93,97 @@ class MyDataset(Dataset):
 
         target = torch.tensor(
             row[self.genre_columns].astype(int).values,
-            dtype=torch.int64
+            dtype=torch.float32
         )
 
         return image, target
 
-    def preprocess(self, output_folder: Path):
+    def preprocess(
+        self, output_folder: Path,
+        train_split: float = 0.8,
+        val_split: float = 0.1,
+        test_split: float = 0.1,
+        seed: int = 42
+    ) -> None  :
+        """
+        Args:
+            output_folder: Path to save processed data.
+            train_split: Proportion of data for training set (Default: 0.8).
+            val_split: Proportion of data for validation set (Default: 0.1).
+            test_split: Proportion of data for test set (Default: 0.1).
+            seed: Random seed for reproducibility (Default: 42).
+        """
+
+        output_folder = Path(output_folder)
         output_folder.mkdir(parents=True, exist_ok=True)
 
+        # Validate splits
+        assert abs(train_split + val_split + test_split - 1.0) < 1e-6,  \
+            f"Splits must sum to 1.0, got {train_split + val_split + test_split}"
+
         # Split dataset
-        # Maybe we don't need the tran_test_split for this, the data already seems shuffled
-        train_df, test_df = train_test_split(
-            self.df,
-            test_size=0.1,
-            random_state=42,
+        # Train + Val and Test split
+        train_df, temp_df = train_test_split(
+            self.df, test_size=(val_split + test_split), random_state=seed,
+        )
+        
+        # Split Temp into Val and Test
+        val_size_ratio = val_split / (val_split + test_split)
+        val_df, test_df = train_test_split(
+            temp_df, test_size=(1 - val_size_ratio), random_state=seed,
         )
 
+        print("Loading and processing splits...")
         train_images, train_targets = self._load_split(train_df)
+        val_images, val_targets = self._load_split(val_df)
         test_images, test_targets = self._load_split(test_df)
 
-        train_images = normalize(train_images)
-        test_images = normalize(test_images)
+        # Normalize if not using ImageNet normalization
+        if not self.use_imagenet_norm:
+            print("Applying dataset normalization...")
+            train_images = self._normalize_dataset(train_images)
+            val_images = self._normalize_dataset(val_images)
+            test_images = self._normalize_dataset(test_images)
 
+        # Save the splits
+        print("Saving processed data...")
         torch.save(train_images, output_folder / "train_images.pt")
         torch.save(train_targets, output_folder / "train_targets.pt")
+        torch.save(val_images, output_folder / "val_images.pt")
+        torch.save(val_targets, output_folder / "val_targets.pt")
         torch.save(test_images, output_folder / "test_images.pt")
         torch.save(test_targets, output_folder / "test_targets.pt")
 
-        # Save genre names (maybe we want to use them later)
+        # Metadata saving
+        metadata = {
+            "genre_names": list(self.genre_columns),
+            "train_size": len(train_images),
+            "val_size": len(val_images),
+            "test_size": len(test_images),
+            "image_size": self.image_size,
+            "use_imagenet_norm": self.use_imagenet_norm
+        }
+
         with open(output_folder / "label_names.json", "w") as f:
             json.dump(list(self.genre_columns), f)
-        
+
+        with open(output_folder / "metadata.json", "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        print("Preprocessing complete.")
         print(f"Train samples: {len(train_images)}")
+        print(f"Validation samples: {len(val_images)}")
         print(f"Test samples: {len(test_images)}")
 
+    def _load_split(self, df: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Args:
+            df: DataFrame for the split.
 
-    def _load_split(self, df):
+        Returns:
+            A tuple of (images tensor, targets tensor)
+        """
+        
         images, targets = [], []
 
         for _, row in df.iterrows():
@@ -91,7 +198,7 @@ class MyDataset(Dataset):
 
             target = torch.tensor(
                 row[self.genre_columns].astype(int).values,
-                dtype=torch.int64
+                dtype=torch.float32
             )
 
             images.append(image)
@@ -99,44 +206,79 @@ class MyDataset(Dataset):
 
         return torch.stack(images), torch.stack(targets)
 
+    def _normalize_dataset(self, images: torch.Tensor) -> torch.Tensor:
+        """ Normalize dataset images to zero mean and unit variance.
 
-def download_data(raw_dir: Path):
+        Args:
+            images: Tensor of shape (N, C, H, W).
+
+        Returns:
+            Normalized images tensor.
+
+        """
+        return (images - images.mean()) / images.std()
+
+def download_data(raw_dir: Path) -> None:
+    """Download and extract the movie poster dataset from Kaggle.
+
+    Args:
+        raw_dir: Path to the directory where raw data will be stored.
+
+    Requires:
+        - Kaggle API installed and configured.
+        - Kaggle package installed.
+
+    """
+
+    raw_dir = Path(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     if (raw_dir / "train.csv").exists() and (raw_dir / "Images").exists():
         print("Raw data already present, skipping download")
         return
 
-    # Hardcoded the dataset name here, not sure if that is the best approach
-    subprocess.run(
-        [
-            "kaggle", "datasets", "download",
-            "-d", "raman77768/movie-classifier",
-            "-p", str(raw_dir),
-        ],
-        check=True,
-    )
+    print("Downloading dataset from Kaggle...")
+
+    try:
+        subprocess.run(
+            ["kaggle", "datasets", "download",
+             "-d", "raman77768/movie-classifier",
+             "-p", str(raw_dir),
+             ],
+            check=True,
+        )
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error downloading dataset: {e}")
+        print("Make sure Kaggle API is configured (~/.kaggle/kaggle.json)")
+        raise
 
     # Unzip zip files
+    print("Extracting dataset...")
     for zip_file in raw_dir.glob("*.zip"):
         with zipfile.ZipFile(zip_file, "r") as z:
             z.extractall(raw_dir)
         zip_file.unlink()
 
+    # Clean up directory structure
     normalize_raw_structure(raw_dir)
+    print("Download complete.")
 
+def normalize_raw_structure(raw_dir: Path) -> None:
+    """ Clean up the extracted dataset structure.
 
-def normalize(images: torch.Tensor) -> torch.Tensor:
-    return (images - images.mean()) / images.std()
+    Moves files from `Multi_Label_dataset/` to `raw_dir/` and removes empty folders.
 
-# This only works for the specific kaggle dataset structure
-# It is to clean up the structure after extraction
-def normalize_raw_structure(raw_dir: Path):
+    Args:
+        raw_dir: Path to the raw data directory.
+    
+    """
+    raw_dir = Path(raw_dir)
     dataset_dir = raw_dir / "Multi_Label_dataset"
 
     if not dataset_dir.exists():
-        return 
-
+        return
+    
     # Move train.csv
     src_csv = dataset_dir / "train.csv"
     dst_csv = raw_dir / "train.csv"
@@ -150,24 +292,101 @@ def normalize_raw_structure(raw_dir: Path):
         shutil.move(str(src_images), str(dst_images))
 
     # Remove empty folder
-    shutil.rmtree(dataset_dir)
+    if dataset_dir.exists():
+        shutil.rmtree(dataset_dir)
 
 
-def run_data_pipeline(data_path: Path, output_folder: Path, image_size: int = 224):
+def run_data_pipeline(
+        data_path: Path = typer.Argument("data/raw", help="Path to the raw data directory"),
+        output_folder: Path = typer.Argument("data/processed", help="Path to save processed data"),
+        image_size: int = typer.Option(224, help="Image size for resizing"),
+        use_imagenet_norm: bool = typer.Option(True, help="Use ImageNet normalization"),
+        exclude_genres: str = typer.Option("N/A", help="Comma-separated genres to exclude"),
+        train_split: float = typer.Option(0.8, help="Proportion of training data"),
+        val_split: float = typer.Option(0.1, help="Proportion of validation data"),
+        test_split: float = typer.Option(0.1, help="Proportion of test data"),
+        seed: int = typer.Option(42, help="Random seed for reproducibility")
+    ) -> None:
+    """ Run the complete data pipeline: download, preprocess, and split data.
+
+    This function:
+    1. Downloads the raw dataset from Kaggle if not already present.
+    2. Loads raw images and labels.
+    3. Applies transformations (resizing, normalization).
+    4. Splits the dataset into training, validation, and test sets.
+    5. Saves the processed datasets and metadata.
+    
+    """
+
+    print("Starting data pipeline...")
+
     download_data(data_path)
-    dataset = MyDataset(data_path, image_size=image_size)
-    dataset.preprocess(output_folder)
 
+    # Parse excluded genres
+    exclude_list = [g.strip() for g in exclude_genres.split(",") if g.strip()]
 
-def poster_dataset():
-    train_images = torch.load("data/processed/train_images.pt")
-    train_targets = torch.load("data/processed/train_targets.pt")
-    test_images = torch.load("data/processed/test_images.pt")
-    test_targets = torch.load("data/processed/test_targets.pt")
+    dataset = MyDataset(
+        data_path,
+        image_size=image_size,
+        use_imagenet_norm=use_imagenet_norm,
+        exclude_genres=exclude_list
+    )
 
+    dataset.preprocess(
+        output_folder,
+        train_split=train_split,
+        val_split=val_split,
+        test_split=test_split,
+        seed=seed
+    )
+
+    print("Data pipeline complete.")
+
+def poster_dataset(
+    processed_path: Path = Path("data/processed")
+) -> Tuple[TensorDataset, TensorDataset, TensorDataset]:
+    """ Load the processed movie poster dataset.
+    
+    Args:
+        processed_path: Path to the processed data directory (.pt files).
+
+    Returns:
+        A tuple of (train_dataset, val_dataset, test_dataset), each being a `TensorDataset`.
+
+    Raises:
+        FileNotFoundError: If processed data files are not found.
+
+    """
+    processed_path = Path(processed_path)
+
+    # Check files exist
+    required_files = [
+        "train_images.pt", "train_targets.pt",
+        "val_images.pt", "val_targets.pt",
+        "test_images.pt", "test_targets.pt"
+    ]
+
+    for file_name in required_files:
+        filepath = processed_path / file_name
+        if not filepath.exists():
+            raise FileNotFoundError(
+                f"Processed data not found: {filepath}\n"
+                f"Run preprocessing pipeline first"
+            )
+    
+    # Load data
+    train_images = torch.load(processed_path / "train_images.pt")
+    train_targets = torch.load(processed_path / "train_targets.pt")
+    val_images = torch.load(processed_path / "val_images.pt")
+    val_targets = torch.load(processed_path / "val_targets.pt")
+    test_images = torch.load(processed_path / "test_images.pt")
+    test_targets = torch.load(processed_path / "test_targets.pt")
+    
+    # Return 3 datasets
     return (
         TensorDataset(train_images, train_targets),
-        TensorDataset(test_images, test_targets),
+        TensorDataset(val_images, val_targets),
+        TensorDataset(test_images, test_targets)
     )
 
 if __name__ == "__main__":

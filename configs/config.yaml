@@ -1,7 +1,36 @@
+# Model configuration
+model:
+  name: "csatv2_21m.sw_r512_in1k"
+  pretrained: true
+  num_classes: 24
+
+# Data configuration
+data:
+  raw_path: "data/raw"
+  processed_path: "data/processed"
+  image_size: 224
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  seed: 42
+  use_imagenet_normalization: true
+
+# Training hyperparameters
 hyperparameters:
   batch_size: 32
   lr: 0.001
   epochs: 10
+  optimizer: "adam"
+  loss_function: "bce_with_logits"
+  prob_threshold: 0.5
+
+# Paths
+paths:
   checkpoint_file: "models/model.pth"
   reports_file: "reports/figures/training_statistics.png"
-  prob_threshold: 0.5
+  best_model_file: "models/best_model.pth"
+
+# Logging
+logging:
+  level: "INFO"
+  save_frequency: 5
