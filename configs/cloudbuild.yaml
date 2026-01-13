@@ -1,0 +1,19 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build container image'
+  args: [
+    'build',
+    '.',
+    '-t',
+    'europe-north1-docker.pkg.dev/test-project-484212/container-registry-mlops/train:latest',
+    '-f',
+    'dockerfiles/train.dockerfile'
+  ]
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push container image'
+  args: [
+    'push',
+    'europe-north1-docker.pkg.dev/test-project-484212/container-registry-mlops/train:latest'
+  ]
+options:
+  logging: CLOUD_LOGGING_ONLY
