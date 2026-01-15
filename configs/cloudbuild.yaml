@@ -20,7 +20,7 @@ steps:
   args: [
     'run',
     'deploy',
-    'Test',
+    'train',
     '--image',
     'europe-north1-docker.pkg.dev/test-project-484212/container-registry-mlops/train:latest',
     '--region',
