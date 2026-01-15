@@ -15,5 +15,27 @@ steps:
     'push',
     'europe-north1-docker.pkg.dev/test-project-484212/container-registry-mlops/train:latest'
   ]
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Update Cloud Run Job'
+  args: [
+    'run',
+    'jobs',
+    'update',
+    'train-job',
+    '--image',
+    'europe-north1-docker.pkg.dev/test-project-484212/container-registry-mlops/train:latest',
+    '--region',
+    'europe-north1',
+    '--service-account',
+    'test-12@test-project-484212.iam.gserviceaccount.com',
+    '--max-retries',
+    '0',
+    '--task-timeout',
+    '3600',
+    '--memory',
+    '8Gi',
+    '--cpu',
+    '4',
+  ]
 options:
   logging: CLOUD_LOGGING_ONLY
