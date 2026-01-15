@@ -27,6 +27,8 @@ steps:
     'europe-north1',
     '--platform',
     'managed',
+    '--service-account',
+    'test-12@test-project-484212.iam.gserviceaccount.com',
   ]
 options:
   logging: CLOUD_LOGGING_ONLY
