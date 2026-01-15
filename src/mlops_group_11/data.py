@@ -1,12 +1,11 @@
 "Data loading and preprocessing for movie poster dataset."
 
-from pathlib import Path
-from typing import Optional, Tuple
-
 import json
 import shutil
 import subprocess
 import zipfile
+from pathlib import Path
+from typing import Optional, Tuple
 
 import pandas as pd
 import torch
@@ -15,6 +14,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, TensorDataset
 from torchvision import transforms
+
 
 class MyDataset(Dataset):
     """Raw movie poster dataset (multi-label classification).
