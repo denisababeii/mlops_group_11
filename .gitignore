@@ -181,3 +181,7 @@ cython_debug/
 
 # Hydra
 outputs
+
+# Logging
+logs/
+wandb/
