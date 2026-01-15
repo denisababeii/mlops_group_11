@@ -15,5 +15,18 @@ steps:
     'push',
     'europe-north1-docker.pkg.dev/test-project-484212/container-registry-mlops/train:latest'
   ]
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Deploy to Cloud Run'
+  args: [
+    'run',
+    'deploy',
+    'train-deploy',
+    '--image',
+    'europe-north1-docker.pkg.dev/test-project-484212/container-registry-mlops/train:latest',
+    '--region',
+    'europe-north1',
+    '--platform',
+    'managed',
+  ]
 options:
   logging: CLOUD_LOGGING_ONLY
