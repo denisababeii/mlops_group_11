@@ -88,7 +88,7 @@ def get_model_info(model: nn.Module) -> Dict[str, Any]:
     }
 
 
-def list_available_models(filter_str: str = "", pretrained: bool = True) -> List[str]:
+def list_available_models(filter_str: str = "", pretrained_only: bool = True) -> List[str]:
     """List available timm models.
 
     Args:
