@@ -1,4 +1,4 @@
-""" Model evaluation Module """
+"""Model evaluation Module"""
 
 import logging
 import os
@@ -26,6 +26,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs", version_base=None)
 def evaluate(cfg: DictConfig) -> None:
     """Evaluate a trained model."""
@@ -41,10 +42,7 @@ def evaluate(cfg: DictConfig) -> None:
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
     model = load_model(
-        model_name=cfg.model.name,
-        checkpoint_path=checkpoint_path,
-        num_classes=cfg.model.num_classes,
-        device=device
+        model_name=cfg.model.name, checkpoint_path=checkpoint_path, num_classes=cfg.model.num_classes, device=device
     )
     model.eval()
     logger.info("Model loaded successfully")
@@ -52,9 +50,7 @@ def evaluate(cfg: DictConfig) -> None:
     # Load data
     logger.info("Loading data")
     try:
-        _, _, test_dataset = poster_dataset(
-            Path(cfg.data.processed_path)
-        )
+        _, _, test_dataset = poster_dataset(Path(cfg.data.processed_path))
     except FileNotFoundError as e:
         logger.error(f"Processed data not found: {e}")
         logger.error("Run preprocessing first: invoke preprocess-data")
@@ -65,7 +61,7 @@ def evaluate(cfg: DictConfig) -> None:
         batch_size=cfg.hyperparameters.batch_size,
         shuffle=False,
         num_workers=4,
-        pin_memory=True if device.type == "cuda" else False
+        pin_memory=True if device.type == "cuda" else False,
     )
     logger.info(f"Test dataset size: {len(test_dataset)}")
 
@@ -88,9 +84,9 @@ def evaluate(cfg: DictConfig) -> None:
     # Calculate metrics
     hamming = hamming_loss(all_labels, all_preds)
     accuracy = accuracy_score(all_labels, all_preds)
-    precision = precision_score(all_labels, all_preds, average='macro', zero_division=0)
-    recall = recall_score(all_labels, all_preds, average='macro', zero_division=0)
-    f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
+    precision = precision_score(all_labels, all_preds, average="macro", zero_division=0)
+    recall = recall_score(all_labels, all_preds, average="macro", zero_division=0)
+    f1 = f1_score(all_labels, all_preds, average="macro", zero_division=0)
 
     # Log results
     logger.info("Evaluation Results (Multi-Label Classification):")
@@ -116,6 +112,7 @@ def evaluate(cfg: DictConfig) -> None:
         f.write(classification_report(all_labels, all_preds))
 
     logger.info(f"Metrics saved to {metrics_file}")
+
 
 if __name__ == "__main__":
     evaluate()

@@ -1,4 +1,4 @@
-""" Model architecture Module (timm library)
+"""Model architecture Module (timm library)
 
 This module provide functions to create and manage deep learning models for
 multi-label movie poster classification using the `timm` library.
@@ -19,12 +19,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def create_timm_model(
-        name: str = "csatv2_21m.sw_r512_in1k",
-        pretrained: bool = True,
-        num_classes: int = 24,
-        **kwargs: Any
-    ) -> nn.Module:
+    name: str = "csatv2_21m.sw_r512_in1k", pretrained: bool = True, num_classes: int = 24, **kwargs: Any
+) -> nn.Module:
     """Create and return a timm model for multi-label classification.
 
     Args:
@@ -46,18 +44,12 @@ def create_timm_model(
     if num_classes <= 0:
         raise ValueError(f"num_classes must be a positive integer, got {num_classes}")
     try:
-        model = timm.create_model(
-            name,
-            pretrained=pretrained,
-            num_classes=num_classes,
-            **kwargs
-        )
-    
+        model = timm.create_model(name, pretrained=pretrained, num_classes=num_classes, **kwargs)
+
         # Log model statistics
         num_params = sum(p.numel() for p in model.parameters())
         num_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        logger.info(f"Created model '{name}' with {num_params} parameters, "
-                    f"of which {num_trainable} are trainable.")
+        logger.info(f"Created model '{name}' with {num_params} parameters, of which {num_trainable} are trainable.")
         logger.info(f"Model size: {num_params * 4 / 1024 / 1024:.2f} MB (float32)")
 
         return model
@@ -65,6 +57,7 @@ def create_timm_model(
     except Exception as e:
         logger.error(f"Error creating model '{name}': {e}")
         raise RuntimeError(f"Model creation failed for '{name}'") from e
+
 
 def get_model_info(model: nn.Module) -> Dict[str, Any]:
     """Get information about the model architecture.
@@ -110,11 +103,7 @@ def list_available_models(filter_str: str = "", pretrained: bool = True) -> List
     return models
 
 
-def save_model(
-        model: nn.Module,
-        save_path: Path,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+def save_model(model: nn.Module, save_path: Path, metadata: Optional[Dict[str, Any]] = None) -> None:
     """Save the model state dictionary to a file.
 
     Args:
@@ -126,17 +115,14 @@ def save_model(
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
-    checkpoint = {
-        "model_state_dict": model.state_dict(),
-        "model_info": get_model_info(model)
-    }
+    checkpoint = {"model_state_dict": model.state_dict(), "model_info": get_model_info(model)}
 
     if metadata is not None:
         checkpoint["metadata"] = metadata
 
     torch.save(checkpoint, save_path)
     logger.info(f"Model saved to {save_path}")
-                
+
 
 def load_model(
     model_name: str,
@@ -176,7 +162,7 @@ def load_model(
 
     # Load checkpoint
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    
+
     # Handle different checkpoint formats
     if "model_state_dict" in checkpoint:
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -189,6 +175,7 @@ def load_model(
     logger.info(f"Model loaded from {checkpoint_path} onto {device}")
 
     return model
+
 
 def freeze_layers(model: nn.Module, freeze_until: Optional[int] = None) -> nn.Module:
     """Freeze layers of the model for transfer learning.
@@ -213,7 +200,7 @@ def freeze_layers(model: nn.Module, freeze_until: Optional[int] = None) -> nn.Mo
             if freeze_until in name:
                 freeze = False
             param.requires_grad = not freeze
-    
+
     # Count froze/trainable parameters
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
@@ -224,11 +211,7 @@ def freeze_layers(model: nn.Module, freeze_until: Optional[int] = None) -> nn.Mo
     return model
 
 
-def validate_model_output(
-    model: nn.Module,
-    input_shape: tuple = (1, 3, 224, 224),
-    num_classes: int = 24
-) -> bool:
+def validate_model_output(model: nn.Module, input_shape: tuple = (1, 3, 224, 224), num_classes: int = 24) -> bool:
     """Validate that model produces expected output shape.
 
     Args:
@@ -250,8 +233,7 @@ def validate_model_output(
 
     # Check output shape
     expected_shape = (input_shape[0], num_classes)
-    assert out.shape == expected_shape, \
-        f"Output shape {out.shape} does not match expected {expected_shape}"
+    assert out.shape == expected_shape, f"Output shape {out.shape} does not match expected {expected_shape}"
 
     # Check for NaNs/Infs
     assert not torch.isnan(out).any(), "Output contains NaNs"
@@ -291,27 +273,27 @@ def count_parameters_by_layer(model: nn.Module) -> Dict[str, int]:
 if __name__ == "__main__":
     """ Example usage and quick validation """
     import sys
-    
+
     print("Validating model module")
-    
+
     try:
         # Create and validate model
         model = create_timm_model()
         info = get_model_info(model)
-        
+
         print(f"Model: {info['total_params']:,} params, {info['model_size_mb']:.1f} MB")
-        
+
         # Test forward pass
         x = torch.rand(1, 3, 224, 224)
         output = model(x)
         print(f"Forward pass: {x.shape} → {output.shape}")
-        
+
         # Validate output
         validate_model_output(model)
         print("Validation passed")
-        
+
         sys.exit(0)
-        
+
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

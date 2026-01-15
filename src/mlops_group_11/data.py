@@ -24,7 +24,7 @@ class MyDataset(Dataset):
         image_size: Size to which images are resized (default: 224).
         use_imagenet_norm: Apply ImageNet normalization to images (default: True).
         exclude_genres: List of genre names to exclude (default: ['N/A']).
-    
+
     Attributes:
         data_path: Path to the dataset folder.
         image_size: Image dimensions.
@@ -33,7 +33,10 @@ class MyDataset(Dataset):
         transform: Image transformation pipeline.
 
     """
-    def __init__(self, data_path: Path, image_size: int = 224, use_imagenet_norm: bool = True, exclude_genres: list = None) -> None:
+
+    def __init__(
+        self, data_path: Path, image_size: int = 224, use_imagenet_norm: bool = True, exclude_genres: list = None
+    ) -> None:
         self.data_path = Path(data_path)
         self.image_size = image_size
         self.use_imagenet_norm = use_imagenet_norm
@@ -44,7 +47,7 @@ class MyDataset(Dataset):
         base_exclude = ["Id", "Genre"]
         if exclude_genres is None:
             exclude_genres = ["N/A"]  # Default: exclude N/A
-        
+
         exclude_columns = base_exclude + exclude_genres
 
         # Genre columns = everything except excluded ones
@@ -63,10 +66,12 @@ class MyDataset(Dataset):
 
         # Transformation pipeline
         if use_imagenet_norm:
-            transform_list.append(transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],   # ImageNet statistics
-                std=[0.229, 0.224, 0.225]
-            ))
+            transform_list.append(
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],  # ImageNet statistics
+                    std=[0.229, 0.224, 0.225],
+                )
+            )
         self.transform = transforms.Compose(transform_list)
 
     def __len__(self) -> int:
@@ -75,8 +80,8 @@ class MyDataset(Dataset):
 
     # Gets image and its label(s) at specific index
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        """ Get image and its labels at index `idx`.
-        
+        """Get image and its labels at index `idx`.
+
         Args:
             idx: Sample index.
 
@@ -91,20 +96,18 @@ class MyDataset(Dataset):
         image = Image.open(img_path).convert("RGB")
         image = self.transform(image)
 
-        target = torch.tensor(
-            row[self.genre_columns].astype(int).values,
-            dtype=torch.float32
-        )
+        target = torch.tensor(row[self.genre_columns].astype(int).values, dtype=torch.float32)
 
         return image, target
 
     def preprocess(
-        self, output_folder: Path,
+        self,
+        output_folder: Path,
         train_split: float = 0.8,
         val_split: float = 0.1,
         test_split: float = 0.1,
-        seed: int = 42
-    ) -> None  :
+        seed: int = 42,
+    ) -> None:
         """
         Args:
             output_folder: Path to save processed data.
@@ -118,19 +121,24 @@ class MyDataset(Dataset):
         output_folder.mkdir(parents=True, exist_ok=True)
 
         # Validate splits
-        assert abs(train_split + val_split + test_split - 1.0) < 1e-6,  \
+        assert abs(train_split + val_split + test_split - 1.0) < 1e-6, (
             f"Splits must sum to 1.0, got {train_split + val_split + test_split}"
+        )
 
         # Split dataset
         # Train + Val and Test split
         train_df, temp_df = train_test_split(
-            self.df, test_size=(val_split + test_split), random_state=seed,
+            self.df,
+            test_size=(val_split + test_split),
+            random_state=seed,
         )
-        
+
         # Split Temp into Val and Test
         val_size_ratio = val_split / (val_split + test_split)
         val_df, test_df = train_test_split(
-            temp_df, test_size=(1 - val_size_ratio), random_state=seed,
+            temp_df,
+            test_size=(1 - val_size_ratio),
+            random_state=seed,
         )
 
         print("Loading and processing splits...")
@@ -161,7 +169,7 @@ class MyDataset(Dataset):
             "val_size": len(val_images),
             "test_size": len(test_images),
             "image_size": self.image_size,
-            "use_imagenet_norm": self.use_imagenet_norm
+            "use_imagenet_norm": self.use_imagenet_norm,
         }
 
         with open(output_folder / "label_names.json", "w") as f:
@@ -183,7 +191,7 @@ class MyDataset(Dataset):
         Returns:
             A tuple of (images tensor, targets tensor)
         """
-        
+
         images, targets = [], []
 
         for _, row in df.iterrows():
@@ -196,10 +204,7 @@ class MyDataset(Dataset):
             image = Image.open(img_path).convert("RGB")
             image = self.transform(image)
 
-            target = torch.tensor(
-                row[self.genre_columns].astype(int).values,
-                dtype=torch.float32
-            )
+            target = torch.tensor(row[self.genre_columns].astype(int).values, dtype=torch.float32)
 
             images.append(image)
             targets.append(target)
@@ -207,7 +212,7 @@ class MyDataset(Dataset):
         return torch.stack(images), torch.stack(targets)
 
     def _normalize_dataset(self, images: torch.Tensor) -> torch.Tensor:
-        """ Normalize dataset images to zero mean and unit variance.
+        """Normalize dataset images to zero mean and unit variance.
 
         Args:
             images: Tensor of shape (N, C, H, W).
@@ -217,6 +222,7 @@ class MyDataset(Dataset):
 
         """
         return (images - images.mean()) / images.std()
+
 
 def download_data(raw_dir: Path) -> None:
     """Download and extract the movie poster dataset from Kaggle.
@@ -241,10 +247,15 @@ def download_data(raw_dir: Path) -> None:
 
     try:
         subprocess.run(
-            ["kaggle", "datasets", "download",
-             "-d", "raman77768/movie-classifier",
-             "-p", str(raw_dir),
-             ],
+            [
+                "kaggle",
+                "datasets",
+                "download",
+                "-d",
+                "raman77768/movie-classifier",
+                "-p",
+                str(raw_dir),
+            ],
             check=True,
         )
 
@@ -264,21 +275,22 @@ def download_data(raw_dir: Path) -> None:
     normalize_raw_structure(raw_dir)
     print("Download complete.")
 
+
 def normalize_raw_structure(raw_dir: Path) -> None:
-    """ Clean up the extracted dataset structure.
+    """Clean up the extracted dataset structure.
 
     Moves files from `Multi_Label_dataset/` to `raw_dir/` and removes empty folders.
 
     Args:
         raw_dir: Path to the raw data directory.
-    
+
     """
     raw_dir = Path(raw_dir)
     dataset_dir = raw_dir / "Multi_Label_dataset"
 
     if not dataset_dir.exists():
         return
-    
+
     # Move train.csv
     src_csv = dataset_dir / "train.csv"
     dst_csv = raw_dir / "train.csv"
@@ -297,17 +309,17 @@ def normalize_raw_structure(raw_dir: Path) -> None:
 
 
 def run_data_pipeline(
-        data_path: Path = typer.Argument("data/raw", help="Path to the raw data directory"),
-        output_folder: Path = typer.Argument("data/processed", help="Path to save processed data"),
-        image_size: int = typer.Option(224, help="Image size for resizing"),
-        use_imagenet_norm: bool = typer.Option(True, help="Use ImageNet normalization"),
-        exclude_genres: str = typer.Option("N/A", help="Comma-separated genres to exclude"),
-        train_split: float = typer.Option(0.8, help="Proportion of training data"),
-        val_split: float = typer.Option(0.1, help="Proportion of validation data"),
-        test_split: float = typer.Option(0.1, help="Proportion of test data"),
-        seed: int = typer.Option(42, help="Random seed for reproducibility")
-    ) -> None:
-    """ Run the complete data pipeline: download, preprocess, and split data.
+    data_path: Path = typer.Argument("data/raw", help="Path to the raw data directory"),
+    output_folder: Path = typer.Argument("data/processed", help="Path to save processed data"),
+    image_size: int = typer.Option(224, help="Image size for resizing"),
+    use_imagenet_norm: bool = typer.Option(True, help="Use ImageNet normalization"),
+    exclude_genres: str = typer.Option("N/A", help="Comma-separated genres to exclude"),
+    train_split: float = typer.Option(0.8, help="Proportion of training data"),
+    val_split: float = typer.Option(0.1, help="Proportion of validation data"),
+    test_split: float = typer.Option(0.1, help="Proportion of test data"),
+    seed: int = typer.Option(42, help="Random seed for reproducibility"),
+) -> None:
+    """Run the complete data pipeline: download, preprocess, and split data.
 
     This function:
     1. Downloads the raw dataset from Kaggle if not already present.
@@ -315,7 +327,7 @@ def run_data_pipeline(
     3. Applies transformations (resizing, normalization).
     4. Splits the dataset into training, validation, and test sets.
     5. Saves the processed datasets and metadata.
-    
+
     """
 
     print("Starting data pipeline...")
@@ -326,27 +338,17 @@ def run_data_pipeline(
     exclude_list = [g.strip() for g in exclude_genres.split(",") if g.strip()]
 
     dataset = MyDataset(
-        data_path,
-        image_size=image_size,
-        use_imagenet_norm=use_imagenet_norm,
-        exclude_genres=exclude_list
+        data_path, image_size=image_size, use_imagenet_norm=use_imagenet_norm, exclude_genres=exclude_list
     )
 
-    dataset.preprocess(
-        output_folder,
-        train_split=train_split,
-        val_split=val_split,
-        test_split=test_split,
-        seed=seed
-    )
+    dataset.preprocess(output_folder, train_split=train_split, val_split=val_split, test_split=test_split, seed=seed)
 
     print("Data pipeline complete.")
 
-def poster_dataset(
-    processed_path: Path = Path("data/processed")
-) -> Tuple[TensorDataset, TensorDataset, TensorDataset]:
-    """ Load the processed movie poster dataset.
-    
+
+def poster_dataset(processed_path: Path = Path("data/processed")) -> Tuple[TensorDataset, TensorDataset, TensorDataset]:
+    """Load the processed movie poster dataset.
+
     Args:
         processed_path: Path to the processed data directory (.pt files).
 
@@ -361,19 +363,19 @@ def poster_dataset(
 
     # Check files exist
     required_files = [
-        "train_images.pt", "train_targets.pt",
-        "val_images.pt", "val_targets.pt",
-        "test_images.pt", "test_targets.pt"
+        "train_images.pt",
+        "train_targets.pt",
+        "val_images.pt",
+        "val_targets.pt",
+        "test_images.pt",
+        "test_targets.pt",
     ]
 
     for file_name in required_files:
         filepath = processed_path / file_name
         if not filepath.exists():
-            raise FileNotFoundError(
-                f"Processed data not found: {filepath}\n"
-                f"Run preprocessing pipeline first"
-            )
-    
+            raise FileNotFoundError(f"Processed data not found: {filepath}\nRun preprocessing pipeline first")
+
     # Load data
     train_images = torch.load(processed_path / "train_images.pt")
     train_targets = torch.load(processed_path / "train_targets.pt")
@@ -381,13 +383,14 @@ def poster_dataset(
     val_targets = torch.load(processed_path / "val_targets.pt")
     test_images = torch.load(processed_path / "test_images.pt")
     test_targets = torch.load(processed_path / "test_targets.pt")
-    
+
     # Return 3 datasets
     return (
         TensorDataset(train_images, train_targets),
         TensorDataset(val_images, val_targets),
-        TensorDataset(test_images, test_targets)
+        TensorDataset(test_images, test_targets),
     )
+
 
 if __name__ == "__main__":
     typer.run(run_data_pipeline)

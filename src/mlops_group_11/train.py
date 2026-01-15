@@ -1,4 +1,4 @@
-""" Model training Module """
+"""Model training Module"""
 
 import logging
 import os
@@ -20,6 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs", version_base=None)
 def train(cfg: DictConfig) -> None:
     """Train the model (validation and checkpointing)"""
@@ -39,9 +40,7 @@ def train(cfg: DictConfig) -> None:
     # Load data
     logger.info("Loading data")
     try:
-        train_dataset, val_dataset, _ = poster_dataset(
-            Path(cfg.data.processed_path)
-        )
+        train_dataset, val_dataset, _ = poster_dataset(Path(cfg.data.processed_path))
     except FileNotFoundError as e:
         logger.error(f"Processed data not found: {e}")
         logger.error("Run preprocessing first: invoke preprocess-data")
@@ -52,7 +51,7 @@ def train(cfg: DictConfig) -> None:
         batch_size=cfg.hyperparameters.batch_size,
         shuffle=True,
         num_workers=4,
-        pin_memory=True if device.type == "cuda" else False
+        pin_memory=True if device.type == "cuda" else False,
     )
 
     val_loader = DataLoader(
@@ -60,7 +59,7 @@ def train(cfg: DictConfig) -> None:
         batch_size=cfg.hyperparameters.batch_size,
         shuffle=False,
         num_workers=4,
-        pin_memory=True if device.type == "cuda" else False
+        pin_memory=True if device.type == "cuda" else False,
     )
 
     logger.info(f"Train dataset size: {len(train_dataset)}")
@@ -70,25 +69,19 @@ def train(cfg: DictConfig) -> None:
     criterion = nn.BCEWithLogitsLoss()  # Use float32 labels
     optimizer = optim.Adam(model.parameters(), lr=cfg.hyperparameters.lr)
 
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer,
-        mode='min',
-        factor=0.5,
-        patience=3,
-        verbose=True
-    )
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=3, verbose=True)
 
     # Tracking
     train_losses = []
     train_accuracies = []
     val_losses = []
     val_accuracies = []
-    best_val_loss = float('inf')
+    best_val_loss = float("inf")
 
     # Training loop
     for epoch in range(cfg.hyperparameters.epochs):
         logger.info(f"Epoch {epoch + 1}/{cfg.hyperparameters.epochs}")
-        
+
         # Training phase
         model.train()
         epoch_train_loss = 0.0
@@ -114,10 +107,7 @@ def train(cfg: DictConfig) -> None:
             n_train += labels.numel()
 
             if (batch_idx + 1) % 10 == 0:
-                logger.info(
-                    f"Batch {batch_idx + 1}/{len(train_loader)}: "
-                    f"Loss: {loss.item():.4f}"
-                )
+                logger.info(f"Batch {batch_idx + 1}/{len(train_loader)}: Loss: {loss.item():.4f}")
 
         train_loss = epoch_train_loss / n_train
         train_accuracy = epoch_train_correct / n_train
@@ -162,12 +152,12 @@ def train(cfg: DictConfig) -> None:
                 model,
                 Path(cfg.paths.best_model_file),
                 metadata={
-                    'epoch': epoch + 1,
-                    'val_loss': val_loss,
-                    'val_acc': val_accuracy,
-                    'train_loss': train_loss,
-                    'train_acc': train_accuracy,
-                }
+                    "epoch": epoch + 1,
+                    "val_loss": val_loss,
+                    "val_acc": val_accuracy,
+                    "train_loss": train_loss,
+                    "train_acc": train_accuracy,
+                },
             )
             logger.info(f"Saved best model with val loss: {best_val_loss:.4f}")
 
@@ -177,12 +167,12 @@ def train(cfg: DictConfig) -> None:
                 model,
                 Path(cfg.paths.checkpoint_file),
                 metadata={
-                    'epoch': epoch + 1,
-                    'train_loss': train_loss,
-                    'val_loss': val_loss,
-                    'train_acc': train_accuracy,
-                    'val_acc': val_accuracy,
-                }
+                    "epoch": epoch + 1,
+                    "train_loss": train_loss,
+                    "val_loss": val_loss,
+                    "train_acc": train_accuracy,
+                    "val_acc": val_accuracy,
+                },
             )
             logger.info(f"Saved checkpoint at epoch {epoch + 1}")
 
@@ -193,29 +183,29 @@ def train(cfg: DictConfig) -> None:
         model,
         Path(cfg.paths.checkpoint_file),
         metadata={
-            'epoch': cfg.hyperparameters.epochs,
-            'train_loss': train_losses[-1],
-            'val_loss': val_losses[-1],
-            'train_acc': train_accuracies[-1],
-            'val_acc': val_accuracies[-1],
-            'best_val_loss': best_val_loss,
-            'status': 'training_completed'
-        }
+            "epoch": cfg.hyperparameters.epochs,
+            "train_loss": train_losses[-1],
+            "val_loss": val_losses[-1],
+            "train_acc": train_accuracies[-1],
+            "val_acc": val_accuracies[-1],
+            "best_val_loss": best_val_loss,
+            "status": "training_completed",
+        },
     )
     logger.info(f"Saved final model to {cfg.paths.checkpoint_file}")
 
     # Plot training curves
     fig, axs = plt.subplots(1, 2, figsize=(15, 5))
-    axs[0].plot(train_losses, label='Train Loss')
-    axs[0].plot(val_losses, label='Val Loss')
+    axs[0].plot(train_losses, label="Train Loss")
+    axs[0].plot(val_losses, label="Val Loss")
     axs[0].set_title("Loss Curve")
     axs[0].set_xlabel("Epoch")
     axs[0].set_ylabel("Loss")
     axs[0].legend()
     axs[0].grid(True)
 
-    axs[1].plot(train_accuracies, label='Train Acc')
-    axs[1].plot(val_accuracies, label='Val Acc')
+    axs[1].plot(train_accuracies, label="Train Acc")
+    axs[1].plot(val_accuracies, label="Val Acc")
     axs[1].set_title("Accuracy Curve")
     axs[1].set_xlabel("Epoch")
     axs[1].set_ylabel("Accuracy")
@@ -224,10 +214,11 @@ def train(cfg: DictConfig) -> None:
 
     report_path = Path(cfg.paths.reports_file)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(report_path, dpi=300, bbox_inches='tight')
+    fig.savefig(report_path, dpi=300, bbox_inches="tight")
     logger.info(f"Saved training curves to {report_path}")
 
     plt.close()
+
 
 if __name__ == "__main__":
     train()
