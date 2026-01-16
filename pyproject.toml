@@ -44,6 +44,8 @@ dev = [
     "mkdocs-material==9.7.1",
     "mkdocstrings-python==2.0.1",
     "mypy>=1.19.1",
+    "snakeviz>=2.2.2",
+    "torch-tb-profiler>=0.4.3",
 ]
 
 [tool.uv.sources]
