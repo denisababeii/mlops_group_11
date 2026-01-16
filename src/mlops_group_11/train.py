@@ -1,12 +1,12 @@
 import logging
 import os
 from contextlib import nullcontext
-from contextlib import nullcontext
 from pathlib import Path
 
 import hydra
 import matplotlib.pyplot as plt
 import torch
+import wandb
 from dotenv import load_dotenv
 from omegaconf import DictConfig
 from sklearn.metrics import (
@@ -18,12 +18,9 @@ from sklearn.metrics import (
 )
 from torch import nn, optim
 from torch.profiler import ProfilerActivity, profile, tensorboard_trace_handler
-from torch.profiler import ProfilerActivity, profile, tensorboard_trace_handler
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
-from torchvision.utils import make_grid
 
-import wandb
 from mlops_group_11.data import poster_dataset
 from mlops_group_11.model import create_timm_model, save_model
 
