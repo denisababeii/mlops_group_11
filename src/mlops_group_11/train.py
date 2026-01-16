@@ -43,6 +43,8 @@ def train(cfg: DictConfig) -> None:
             "lr": cfg.hyperparameters.lr,
             "batch_size": cfg.hyperparameters.batch_size,
             "epochs": cfg.hyperparameters.epochs,
+            "prob_threshold": cfg.hyperparameters.prob_threshold,
+            "model_name": cfg.model.name,
         },
     )
 
@@ -62,7 +64,7 @@ def train(cfg: DictConfig) -> None:
     # Load data
     logger.info("Loading data")
     try:
-        train_dataset, _, _ = poster_dataset(Path(cfg.data.processed_path))
+        train_dataset, val_dataset, _ = poster_dataset(Path(cfg.data.processed_path))
     except FileNotFoundError as e:
         logger.error(f"Processed data not found: {e}")
         logger.error("Run preprocessing first: invoke preprocess-data")
@@ -76,6 +78,14 @@ def train(cfg: DictConfig) -> None:
         pin_memory=True if device.type == "cuda" else False,
     )
 
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=cfg.hyperparameters.batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True if device.type == "cuda" else False,
+    )
+
     logger.info(f"Train dataset size: {len(train_dataset)}")
 
     # Setup training
@@ -85,6 +95,9 @@ def train(cfg: DictConfig) -> None:
     # Tracking
     train_losses = []
     train_accuracies = []
+    val_losses = []
+    val_accuracies = []
+    best_val_loss = float("inf")
 
     # Training loop
     for epoch in range(cfg.hyperparameters.epochs):
@@ -137,7 +150,10 @@ def train(cfg: DictConfig) -> None:
 
                 batch_accuracy = (preds == labels).float().mean().item()
                 global_step = epoch * len(train_loader) + batch_idx
-                wandb.log({"train_loss": loss.item(), "train_accuracy": batch_accuracy}, step=global_step)
+                wandb.log(
+                    {"train/batch_loss": loss.item(), "train/batch_accuracy": batch_accuracy},
+                    step=global_step,
+                )
 
                 scores_list.append(probs.detach().cpu())
                 targets_list.append(labels.detach().cpu().float())
@@ -167,11 +183,65 @@ def train(cfg: DictConfig) -> None:
             train_losses.append(train_loss)
             train_accuracies.append(train_accuracy)
 
+        # Validation phase
+        model.eval()
+        epoch_val_loss = 0.0
+        epoch_val_correct = 0
+        n_val = 0
+
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images = images.to(device)
+                labels = labels.to(device).float()
+
+                logits = model(images)
+                loss = criterion(logits, labels)
+
+                probs = torch.sigmoid(logits)
+                preds = (probs > cfg.hyperparameters.prob_threshold).float()
+
+                epoch_val_loss += loss.item() * labels.numel()
+                epoch_val_correct += (preds == labels).sum().item()
+                n_val += labels.numel()
+
+        val_loss = epoch_val_loss / n_val
+        val_accuracy = epoch_val_correct / n_val
+        val_losses.append(val_loss)
+        val_accuracies.append(val_accuracy)
+
         if do_profile:
             logger.info("Profiling results for epoch:")
             logger.info(prof.key_averages().table(sort_by="cpu_time_total"))
 
         logger.info(f"Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}")
+        logger.info(f"Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.4f}")
+
+        wandb.log(
+            {
+                "epoch": epoch + 1,
+                "train/loss": train_loss,
+                "train/accuracy": train_accuracy,
+                "val/loss": val_loss,
+                "val/accuracy": val_accuracy,
+            },
+            step=epoch + 1,
+        )
+
+        # Save the best model
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            save_model(
+                model,
+                Path(cfg.paths.best_model_file),
+                metadata={
+                    "epoch": epoch + 1,
+                    "val_loss": val_loss,
+                    "val_acc": val_accuracy,
+                    "train_loss": train_loss,
+                    "train_acc": train_accuracy,
+                },
+            )
+            logger.info(f"Saved best model with val loss: {best_val_loss:.4f}")
 
         # Periodic checkpointing
         if (epoch + 1) % cfg.logging.save_frequency == 0:
@@ -228,6 +298,8 @@ def train(cfg: DictConfig) -> None:
         },
     )
     logger.info(f"Saved final model to {cfg.paths.checkpoint_file}")
+
+    # Save model as wandb artifact
     artifact = wandb.Artifact(
         name=cfg.model.name,
         type="model",
