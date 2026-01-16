@@ -63,7 +63,6 @@ def train(cfg: DictConfig) -> None:
     logger.info("Loading data")
     try:
         train_dataset, _, _ = poster_dataset(Path(cfg.data.processed_path))
-        train_dataset, _, _ = poster_dataset(Path(cfg.data.processed_path))
     except FileNotFoundError as e:
         logger.error(f"Processed data not found: {e}")
         logger.error("Run preprocessing first: invoke preprocess-data")
@@ -117,40 +116,7 @@ def train(cfg: DictConfig) -> None:
             epoch_train_loss = 0.0
             epoch_train_correct = 0
             n_train = 0
-        do_profile = bool(cfg.profiling.enabled) and (epoch < cfg.profiling.num_epochs)
 
-        # Choose how many batches to run this epoch (only reduced when profiling)
-        max_batches = cfg.profiling.num_batches if do_profile else None
-
-        activities = [ProfilerActivity.CPU]
-        if device.type == "cuda":
-            activities.append(ProfilerActivity.CUDA)
-
-        profile_ctx = (
-            profile(
-                activities=activities,
-                record_shapes=True,
-                profile_memory=True,
-                on_trace_ready=tensorboard_trace_handler(cfg.profiling.log_dir),
-            )
-            if do_profile
-            else nullcontext()
-        )
-
-        with profile_ctx as prof:
-            # Training phase
-            model.train()
-            epoch_train_loss = 0.0
-            epoch_train_correct = 0
-            n_train = 0
-
-            scores_list, targets_list = [], []
-            for batch_idx, (images, labels) in enumerate(train_loader):
-                if max_batches is not None and batch_idx >= max_batches:
-                    break
-
-                images = images.to(device)
-                labels = labels.to(device).float()
             scores_list, targets_list = [], []
             for batch_idx, (images, labels) in enumerate(train_loader):
                 if max_batches is not None and batch_idx >= max_batches:
@@ -160,12 +126,7 @@ def train(cfg: DictConfig) -> None:
                 labels = labels.to(device).float()
 
                 optimizer.zero_grad()
-                optimizer.zero_grad()
 
-                logits = model(images)
-                loss = criterion(logits, labels)
-                loss.backward()
-                optimizer.step()
                 logits = model(images)
                 loss = criterion(logits, labels)
                 loss.backward()
@@ -175,7 +136,8 @@ def train(cfg: DictConfig) -> None:
                 preds = (probs > cfg.hyperparameters.prob_threshold).float()
 
                 batch_accuracy = (preds == labels).float().mean().item()
-                wandb.log({"train_loss": loss.item(), "train_accuracy": batch_accuracy})
+                global_step = epoch * len(train_loader) + batch_idx
+                wandb.log({"train_loss": loss.item(), "train_accuracy": batch_accuracy}, step=global_step)
 
                 scores_list.append(probs.detach().cpu())
                 targets_list.append(labels.detach().cpu().float())
@@ -183,15 +145,7 @@ def train(cfg: DictConfig) -> None:
                 epoch_train_loss += loss.item() * labels.numel()
                 epoch_train_correct += (preds == labels).sum().item()
                 n_train += labels.numel()
-                epoch_train_loss += loss.item() * labels.numel()
-                epoch_train_correct += (preds == labels).sum().item()
-                n_train += labels.numel()
 
-                if do_profile:
-                    prof.step()
-
-                if (batch_idx + 1) % 10 == 0:
-                    logger.info(f"Batch {batch_idx + 1}/{len(train_loader)}: Loss: {loss.item():.4f}")
                 if do_profile:
                     prof.step()
 
@@ -213,9 +167,6 @@ def train(cfg: DictConfig) -> None:
             train_losses.append(train_loss)
             train_accuracies.append(train_accuracy)
 
-        if do_profile:
-            logger.info("Profiling results for epoch:")
-            logger.info(prof.key_averages().table(sort_by="cpu_time_total"))
         if do_profile:
             logger.info("Profiling results for epoch:")
             logger.info(prof.key_averages().table(sort_by="cpu_time_total"))
@@ -256,14 +207,6 @@ def train(cfg: DictConfig) -> None:
         plt.close()
 
     logger.info("Training complete")
-
-    preds = (scores_list > cfg.hyperparameters.prob_threshold).int().numpy()
-    labels = targets_list.int().numpy()
-
-    final_accuracy = accuracy_score(labels, preds)
-    final_precision = precision_score(labels, preds, average="samples", zero_division=0)
-    final_recall = recall_score(labels, preds, average="samples", zero_division=0)
-    final_f1 = f1_score(labels, preds, average="samples", zero_division=0)
 
     preds = (scores_list > cfg.hyperparameters.prob_threshold).int().numpy()
     labels = targets_list.int().numpy()
