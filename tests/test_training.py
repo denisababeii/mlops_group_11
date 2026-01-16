@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from omegaconf import OmegaConf
 
@@ -21,6 +22,10 @@ def test_train_returns_gracefully_when_data_missing(monkeypatch, tmp_path: Path)
         raise FileNotFoundError("fake missing data")
 
     monkeypatch.setattr(train_module, "poster_dataset", _fake_poster_dataset)
+
+    # Mock wandb to avoid API key requirement
+    mock_wandb = MagicMock()
+    monkeypatch.setattr(train_module, "wandb", mock_wandb)
 
     # Build a minimal Hydra-like config (only fields train() uses)
     cfg = OmegaConf.create(
