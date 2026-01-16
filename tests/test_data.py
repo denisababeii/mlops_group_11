@@ -34,13 +34,14 @@ def _make_dummy_raw_dataset(root: Path, n: int = 20, num_genres: int = 3) -> Non
     rows = []
     for i in range(n):
         row = {"Id": i, "Genre": "dummy", "N/A": 0}
-        
+
         # simplified multi-genre pattern
         for k, col in enumerate(genre_cols):
             row[col] = 1 if (i + k) % 2 == 0 else 0
         rows.append(row)
 
     pd.DataFrame(rows).to_csv(root / "train.csv", index=False)
+
 
 #   Test function for poster_dataset preprocessed files check
 def test_poster_dataset_raises_if_processed_files_missing(tmp_path: Path) -> None:
@@ -63,8 +64,8 @@ def test_poster_dataset_raises_if_processed_files_missing(tmp_path: Path) -> Non
     )
 
 
-
 # This function tests MyDataset.__len__ and MyDataset.__getitem__
+
 
 @pytest.mark.parametrize("image_size", [32, 64])
 def test_mydataset_len_and_getitem_shapes(tmp_path: Path, image_size: int) -> None:
@@ -90,9 +91,7 @@ def test_mydataset_len_and_getitem_shapes(tmp_path: Path, image_size: int) -> No
     assert isinstance(y, torch.Tensor), "Target should be a torch.Tensor"
 
     # Your transform makes images (3, H, W)
-    assert x.shape == (3, image_size, image_size), (
-        "Image tensor should have shape (3, image_size, image_size)."
-    )
+    assert x.shape == (3, image_size, image_size), "Image tensor should have shape (3, image_size, image_size)."
     assert x.dtype == torch.float32, "Image tensor should be float32."
 
     # Target vector length equals number of label columns (num_genres)
@@ -102,6 +101,7 @@ def test_mydataset_len_and_getitem_shapes(tmp_path: Path, image_size: int) -> No
 
 
 # Test function for MyDataset.preprocess output files and loader sanity check
+
 
 def test_preprocess_creates_expected_outputs(tmp_path: Path) -> None:
     """
@@ -120,9 +120,12 @@ def test_preprocess_creates_expected_outputs(tmp_path: Path) -> None:
     ds.preprocess(output_folder=processed, train_split=0.8, val_split=0.1, test_split=0.1, seed=123)
 
     expected_pt = [
-        "train_images.pt", "train_targets.pt",
-        "val_images.pt", "val_targets.pt",
-        "test_images.pt", "test_targets.pt",
+        "train_images.pt",
+        "train_targets.pt",
+        "val_images.pt",
+        "val_targets.pt",
+        "test_images.pt",
+        "test_targets.pt",
     ]
     for fname in expected_pt:
         assert (processed / fname).exists(), f"Expected {fname} to be created by preprocess()."
@@ -138,6 +141,7 @@ def test_preprocess_creates_expected_outputs(tmp_path: Path) -> None:
 
 
 # Test function for MyDataset.preprocess invalid splits check
+
 
 def test_preprocess_invalid_splits_raises(tmp_path: Path) -> None:
     """
