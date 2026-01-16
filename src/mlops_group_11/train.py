@@ -57,7 +57,7 @@ def upload_to_gcs(local_path: str, gcs_path: str, bucket_name: str = "mlops-grou
         logger.warning(f"Failed to upload to GCS: {e}")
 
 
-@hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs", version_base=None)
+@hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs", version_base="1.3")
 def train(cfg: DictConfig) -> None:
     """Train the model (with checkpointing)"""
 
