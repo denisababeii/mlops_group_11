@@ -34,3 +34,10 @@ paths:
 logging:
   level: "INFO"
   save_frequency: 5
+
+# Profiling
+profiling:
+  enabled: false
+  num_batches: 10
+  num_epochs: 1
+  log_dir: "outputs/profiling/pytorch_profiling/train"

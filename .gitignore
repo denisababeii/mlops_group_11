@@ -181,4 +181,11 @@ cython_debug/
 
 # Hydra
 outputs
+HEAD
 /data
+=======
+
+# Logging
+logs/
+wandb/
+fba50e8e743e191c20a31ac43fc31c6861e417e5
