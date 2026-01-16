@@ -1,0 +1,36 @@
+program: src/mlops_group_11/train.py
+name: hyperparameters_sweep
+project: mlops_group_11
+method: bayes
+
+metric:
+  goal: minimize
+  name: val_loss
+
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - hyperparameters.lr=${lr}
+  - hyperparameters.batch_size=${batch_size}
+  - hyperparameters.epochs=${epochs}
+  - hyperparameters.prob_threshold=${prob_threshold}
+  - model.name=${model_name}
+
+parameters:
+  lr:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.1
+  batch_size:
+    values: [16, 32, 64]
+  epochs:
+    values: [5, 10, 15]
+  prob_threshold:
+    distribution: uniform
+    min: 0.1
+    max: 0.9
+  model_name:
+    values: ["csatv2_21m.sw_r512_in1k", "resnet50", "efficientnet_b0"]
+
+run_cap: 10
