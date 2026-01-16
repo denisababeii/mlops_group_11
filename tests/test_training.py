@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import pytest
 from omegaconf import OmegaConf
 
 import mlops_group_11.train as train_module
