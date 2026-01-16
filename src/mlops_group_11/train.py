@@ -1,13 +1,16 @@
 import logging
 import os
+import random
 from contextlib import nullcontext
 from pathlib import Path
 
 import hydra
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import wandb
 from dotenv import load_dotenv
+from google.cloud import storage
 from omegaconf import DictConfig
 from sklearn.metrics import (
     RocCurveDisplay,
@@ -32,13 +35,41 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# To ensure there is reproducibility
+def set_seed(seed=42):
+    """Set random seeds for reproducibility."""
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def upload_to_gcs(local_path: str, gcs_path: str, bucket_name: str = "mlops-group11-data"):
+    """Upload file to GCS bucket."""
+    try:
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(gcs_path)
+        blob.upload_from_filename(local_path)
+        logger.info(f"Uploaded to gs://{bucket_name}/{gcs_path}")
+    except Exception as e:
+        logger.warning(f"Failed to upload to GCS: {e}")
+
 
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs", version_base=None)
 def train(cfg: DictConfig) -> None:
     """Train the model (with checkpointing)"""
+
+    # Seed is set for reproducibility
+    set_seed(cfg.get("seed", 42))
+
+    job_id = os.environ.get("CLOUD_ML_JOB_ID", wandb.util.generate_id())
+
     run = wandb.init(
         entity=os.getenv("WANDB_ENTITY"),
         project=os.getenv("WANDB_PROJECT"),
+        name = f"train-{cfg.model.name}-{job_id}",
         config={
             "lr": cfg.hyperparameters.lr,
             "batch_size": cfg.hyperparameters.batch_size,
@@ -217,9 +248,10 @@ def train(cfg: DictConfig) -> None:
     final_f1 = f1_score(labels, preds, average="samples", zero_division=0)
 
     # Save final model
+    final_model_path = Path(cfg.paths.checkpoint_file)
     save_model(
         model,
-        Path(cfg.paths.checkpoint_file),
+        final_model_path,
         metadata={
             "epoch": cfg.hyperparameters.epochs,
             "train_loss": train_losses[-1],
@@ -228,6 +260,10 @@ def train(cfg: DictConfig) -> None:
         },
     )
     logger.info(f"Saved final model to {cfg.paths.checkpoint_file}")
+
+    # Upload final model to GCS
+    upload_to_gcs(str(final_model_path), f"models/final_model_{job_id}.pth")
+
     artifact = wandb.Artifact(
         name=cfg.model.name,
         type="model",
@@ -263,8 +299,13 @@ def train(cfg: DictConfig) -> None:
     wandb.log({"training_curves": wandb.Image(fig)})
     logger.info(f"Saved training curves to {report_path}")
 
+    # Upload to GCP
+    upload_to_gcs(str(report_path), f"reports/training_curves_{job_id}.png")
+
     plt.close()
 
+    # Finish the W&B (check if needed or not)
+    wandb.finish()
 
 if __name__ == "__main__":
     train()
