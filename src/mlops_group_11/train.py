@@ -1,5 +1,3 @@
-"""Model training Module"""
-
 import logging
 import os
 from contextlib import nullcontext
@@ -11,7 +9,13 @@ import matplotlib.pyplot as plt
 import torch
 from dotenv import load_dotenv
 from omegaconf import DictConfig
-from sklearn.metrics import RocCurveDisplay, accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import (
+    RocCurveDisplay,
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 from torch import nn, optim
 from torch.profiler import ProfilerActivity, profile, tensorboard_trace_handler
 from torch.profiler import ProfilerActivity, profile, tensorboard_trace_handler
