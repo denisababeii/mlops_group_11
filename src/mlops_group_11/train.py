@@ -4,6 +4,8 @@ import random
 from contextlib import nullcontext
 from pathlib import Path
 
+os.environ["GIT_PYTHON_REFRESH"] = "quiet"
+
 import hydra
 import matplotlib.pyplot as plt
 import numpy as np
