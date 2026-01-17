@@ -1,12 +1,3 @@
-defaults:
-  - _self_
-
-hydra:
-  job:
-    chdir: false
-  run:
-    dir: ./outputs
-
 # Model configuration
 model:
   name: "csatv2_21m.sw_r512_in1k"

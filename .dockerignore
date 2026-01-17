@@ -3,6 +3,9 @@
 # Data folders (heaviest ones)
 data/
 .dvc/cache/
+.dvc/config.local
+.dvc/tmp/
+.dvc/plots/
 
 # Git (also heavy, around 150 MB)
 .git/
