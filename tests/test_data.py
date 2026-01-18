@@ -3,8 +3,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 import torch
-from mlops_group_11.data import MyDataset, poster_dataset
 from PIL import Image
+
+from mlops_group_11.data import MyDataset, poster_dataset
 
 
 def _make_dummy_raw_dataset(root: Path, n: int = 20, num_genres: int = 3) -> None:
