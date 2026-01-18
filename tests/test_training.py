@@ -1,9 +1,8 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from omegaconf import OmegaConf
-
 import mlops_group_11.train as train_module
+from omegaconf import OmegaConf
 
 
 def test_train_returns_gracefully_when_data_missing(monkeypatch, tmp_path: Path) -> None:

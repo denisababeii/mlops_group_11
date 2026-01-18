@@ -13,7 +13,6 @@ Corresponds to functions in mlops_group_11.model:
 
 import pytest
 import torch
-
 from mlops_group_11.model import create_timm_model, validate_model_output
 
 
