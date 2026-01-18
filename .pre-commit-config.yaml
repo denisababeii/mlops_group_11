@@ -11,3 +11,10 @@ repos:
     -   id: check-toml
     -   id: check-added-large-files
     -   id: no-commit-to-branch
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.7
+    hooks:
+    -   id: ruff
+        args: ["--fix"]
+    -   id: ruff-format
+    -   id: ruff
