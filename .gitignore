@@ -186,5 +186,3 @@ outputs
 logs/
 wandb/
 
-# Post-trained model files
-models/*.pth
