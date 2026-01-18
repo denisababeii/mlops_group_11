@@ -36,18 +36,18 @@ _transform = transforms.Compose(
     ]
 )
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- Startup ---
     print("Welcome to the Movie Poster Genre Inference API! 🎬")
     print("Upload a poster and discover its genres. 🍿")
 
-
     yield  # <-- application runs while paused here
 
     # --- Shutdown ---
     print("👋 Au revoir!")
-    
+
 
 app = FastAPI(
     title="MLOps Group 11 - Poster Genre Inference API",
@@ -122,8 +122,8 @@ async def predict(
 
     # Predict (multi-label: sigmoid)
     with torch.no_grad():
-        logits = _model(input_tensor)    # (1, num_classes)
-        probs = torch.sigmoid(logits)[0] # (num_classes,)
+        logits = _model(input_tensor)  # (1, num_classes)
+        probs = torch.sigmoid(logits)[0]  # (num_classes,)
 
     probs_list = probs.detach().cpu().tolist()
 
@@ -136,9 +136,7 @@ async def predict(
 
     # All labels above threshold
     predicted = [
-        {"label": _labels[i], "probability": float(p)}
-        for i, p in enumerate(probs_list)
-        if p >= float(threshold)
+        {"label": _labels[i], "probability": float(p)} for i, p in enumerate(probs_list) if p >= float(threshold)
     ]
 
     return {
