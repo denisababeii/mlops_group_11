@@ -11,6 +11,7 @@ from PIL import Image
 from torchvision import transforms
 
 from mlops_group_11.model import load_model
+from fastapi import HTTPException
 
 # Configuration from environment variables
 
@@ -101,6 +102,9 @@ def health() -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
+MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE_MB", "10")) * 1024 * 1024  # Default 10MB in bytes
+
+
 @app.post("/predict")
 async def predict(
     file: UploadFile = File(...),
@@ -112,10 +116,16 @@ async def predict(
 
     # Read upload -> PIL
     content = await file.read()
+    
+    # Validate file size
+    if len(content) > MAX_FILE_SIZE:
+        return {
+            "error": f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024 * 1024)}MB"
+        }
     try:
         img = Image.open(io.BytesIO(content)).convert("RGB")
-    except Exception:
-        return {"error": "Could not read uploaded file as an image"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read uploaded file as an image: {str(e)}")
 
     # Preprocess
     input_tensor = _transform(img).unsqueeze(0).to(_device)  # (1,3,H,W)
