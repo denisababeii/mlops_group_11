@@ -1,9 +1,9 @@
 import io
 import json
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
-from contextlib import asynccontextmanager
 
 import torch
 from fastapi import FastAPI, File, UploadFile
