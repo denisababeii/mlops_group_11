@@ -9,20 +9,19 @@ from mlops_group_11.api import app
 client = TestClient(app)
 
 
-
 def test_health_responds():
-    '''
+    """
     API test: verify /health endpoint responds correctly.
-    '''
+    """
     r = client.get("/health")
     assert r.status_code == 200
     assert "status" in r.json()
 
 
 def test_predict_with_dummy_model(monkeypatch):
-    '''
+    """
     API test: verify /predict endpoint works with a dummy model.
-    '''
+    """
     import mlops_group_11.api as api
 
     class DummyModel(torch.nn.Module):
@@ -39,9 +38,9 @@ def test_predict_with_dummy_model(monkeypatch):
 
     # Create a dummy image
     img = Image.new("RGB", (224, 224))
-    buf = io.BytesIO() # in-memory buffer
-    img.save(buf, format="JPEG") 
-    buf.seek(0) 
+    buf = io.BytesIO()  # in-memory buffer
+    img.save(buf, format="JPEG")
+    buf.seek(0)
 
     files = {"file": ("test.jpg", buf, "image/jpeg")}
     r = client.post("/predict?threshold=0.5&topk=5", files=files)

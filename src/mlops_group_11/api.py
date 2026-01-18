@@ -6,12 +6,11 @@ from pathlib import Path
 from typing import Any
 
 import torch
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image
 from torchvision import transforms
 
 from mlops_group_11.model import load_model
-from fastapi import HTTPException
 
 # Configuration from environment variables
 
@@ -134,12 +133,10 @@ async def predict(
 
     # Read upload -> PIL
     content = await file.read()
-    
+
     # Validate file size
     if len(content) > MAX_FILE_SIZE:
-        return {
-            "error": f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024 * 1024)}MB"
-        }
+        return {"error": f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024 * 1024)}MB"}
     try:
         img = Image.open(io.BytesIO(content)).convert("RGB")
     except Exception as e:
