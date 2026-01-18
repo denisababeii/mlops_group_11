@@ -185,3 +185,6 @@ outputs
 # Logging
 logs/
 wandb/
+
+# Post-trained model files
+models/*.pth
