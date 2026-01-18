@@ -59,9 +59,9 @@ def test_poster_dataset_raises_if_processed_files_missing(tmp_path: Path) -> Non
         poster_dataset(processed)
 
     # Check that the error message guides the user to run preprocessing
-    assert "Run preprocessing pipeline first" in str(
-        excinfo.value
-    ), "Expected FileNotFoundError to instruct the user to run preprocessing."
+    assert "Run preprocessing pipeline first" in str(excinfo.value), (
+        "Expected FileNotFoundError to instruct the user to run preprocessing."
+    )
 
 
 # This function tests MyDataset.__len__ and MyDataset.__getitem__
