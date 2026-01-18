@@ -40,13 +40,31 @@ _transform = transforms.Compose(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _model, _device, _labels
+
     # --- Startup ---
+    # Initialize device once so that downstream code can rely on it.
+    if _device is None:
+        _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     print("Welcome to the Movie Poster Genre Inference API! 🎬")
     print("Upload a poster and discover its genres. 🍿")
 
     yield  # <-- application runs while paused here
 
     # --- Shutdown ---
+    # Explicitly release model and associated resources to free memory (incl. GPU).
+    if _model is not None:
+        _model = None
+
+    if _labels is not None:
+        _labels = None
+
+    if _device is not None and torch.cuda.is_available():
+        # Clear CUDA cache to free GPU memory used by the model, if any.
+        torch.cuda.empty_cache()
+
+    _device = None
     print("👋 Au revoir!")
 
 
