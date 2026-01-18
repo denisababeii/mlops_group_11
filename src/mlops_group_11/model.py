@@ -269,6 +269,60 @@ def count_parameters_by_layer(model: nn.Module) -> Dict[str, int]:
 
     return layer_params
 
+def experimental_convert_model_to_onnx(
+    model_name: str,
+    checkpoint_path: Path,
+    output_path: Path,
+    num_classes: int = 24,
+    input_shape: tuple = (1, 3, 224, 224),
+    device: Optional[torch.device] = None,
+) -> None:
+    """Convert a trained model to ONNX format.
+    
+    Args:
+        model_name: Name of the timm model.
+        checkpoint_path: Path to the model checkpoint.
+        output_path: Path where ONNX model will be saved.
+        num_classes: Number of output classes (default: 24).
+        input_shape: Shape of dummy input tensor (B, C, H, W) (default: (1, 3, 224, 224)).
+        device: Device to use for conversion (default: auto-detect).
+    """
+    logger.info("Starting ONNX conversion")
+
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using device: {device}")
+
+    # Load model
+    logger.info("Loading model...")
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+    model = load_model(
+        model_name=model_name, checkpoint_path=checkpoint_path, num_classes=num_classes, device=device
+    )
+    model.eval()
+    logger.info("Model loaded successfully")
+
+    # Create dummy input for tracing
+    dummy_input = torch.randn(input_shape).to(device)
+    
+    # Ensure output directory exists
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Export to ONNX
+    torch.onnx.export(
+        model=model,
+        args=dummy_input,
+        f=str(output_path),
+        input_names=["input"],
+        output_names=["output"],
+        dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+        opset_version=11,
+    )
+    
+    logger.info(f"Model successfully exported to ONNX format: {output_path}")
 
 if __name__ == "__main__":
     """ Example usage and quick validation """
