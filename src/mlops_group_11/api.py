@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from contextlib import asynccontextmanager
 
 import torch
 from fastapi import FastAPI, File, UploadFile
@@ -35,7 +36,24 @@ _transform = transforms.Compose(
     ]
 )
 
-app = FastAPI(title="MLOps Group 11 - Poster Genre Inference API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- Startup ---
+    print("Welcome to the Movie Poster Genre Inference API! 🎬")
+    print("Upload a poster and discover its genres. 🍿")
+
+
+    yield  # <-- application runs while paused here
+
+    # --- Shutdown ---
+    print("👋 Au revoir!")
+    
+
+app = FastAPI(
+    title="MLOps Group 11 - Poster Genre Inference API",
+    lifespan=lifespan,
+)
+
 
 # Loaded once (cached)
 _model: torch.nn.Module | None = None
