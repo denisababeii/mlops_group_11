@@ -1,0 +1,38 @@
+# Recommended to ignore some heavy files + cache
+
+# Data folders (heaviest ones)
+data/
+.dvc/cache/
+.dvc/config.local
+.dvc/tmp/
+.dvc/plots/
+
+# Git (also heavy, around 150 MB)
+.git/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# Training outputs
+wandb/
+outputs/
+
+# Models (old checkpoints not needed for training container)
+models/*.pth
+models/*.pt
+!models/.gitkeep
+
+# Reports (generated during training)
+reports/figures/*.png
+
+# Other
+*.log
+.DS_Store
+notebooks/.env
+sweep_job_config.yaml

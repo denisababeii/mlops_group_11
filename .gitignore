@@ -181,8 +181,12 @@ cython_debug/
 
 # Hydra
 outputs
+HEAD
+/data
+=======
 
 # Logging
 logs/
 wandb/
+sweep_job_config.yaml
 
