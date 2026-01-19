@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from mlops_group_11.src.mlops_group_11.adaptive_avg_pool_2d_custom import AdaptiveAvgPool2dCustom
+import numpy as np
 import timm
 import torch
 import torch.nn as nn
@@ -269,7 +271,26 @@ def count_parameters_by_layer(model: nn.Module) -> Dict[str, int]:
 
     return layer_params
 
-def experimental_convert_model_to_onnx(
+def replace_adaptive_avg_pool2d(model: nn.Module) -> nn.Module:
+    """Recursively replace all AdaptiveAvgPool2d layers with ONNX-compatible version.
+    
+    Args:
+        model: PyTorch model to modify.
+        
+    Returns:
+        Modified model with replaced layers.
+    """
+    for name, module in model.named_children():
+        if isinstance(module, nn.AdaptiveAvgPool2d):
+            # Replace with custom implementation
+            setattr(model, name, AdaptiveAvgPool2dCustom(module.output_size))
+            logger.info(f"Replaced AdaptiveAvgPool2d at {name} with ONNX-compatible version")
+        else:
+            # Recursively process child modules
+            replace_adaptive_avg_pool2d(module)
+    return model
+
+def convert_model_to_onnx(
     model_name: str,
     checkpoint_path: Path,
     output_path: Path,
@@ -304,6 +325,11 @@ def experimental_convert_model_to_onnx(
     model.eval()
     logger.info("Model loaded successfully")
 
+    # Replace AdaptiveAvgPool2d layers with ONNX-compatible version
+    # This fixes: https://github.com/pytorch/pytorch/issues/42653
+    logger.info("Replacing AdaptiveAvgPool2d layers for ONNX compatibility...")
+    model = replace_adaptive_avg_pool2d(model)
+
     # Create dummy input for tracing
     dummy_input = torch.randn(input_shape).to(device)
     
@@ -312,6 +338,9 @@ def experimental_convert_model_to_onnx(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Export to ONNX
+    # Note: Only batch dimension is dynamic. Height/width must be fixed due to adaptive_avg_pool2d limitation
+    # See: https://github.com/pytorch/pytorch/issues/42653
+    # Using opset_version=14 for scaled_dot_product_attention support
     torch.onnx.export(
         model=model,
         args=dummy_input,
@@ -319,7 +348,7 @@ def experimental_convert_model_to_onnx(
         input_names=["input"],
         output_names=["output"],
         dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
-        opset_version=11,
+        opset_version=14,
     )
     
     logger.info(f"Model successfully exported to ONNX format: {output_path}")
