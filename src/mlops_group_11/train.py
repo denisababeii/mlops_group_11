@@ -61,13 +61,13 @@ def upload_to_gcs(local_path: str, gcs_path: str, bucket_name: str = "mlops-grou
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs", version_base=None)
 def train(cfg: DictConfig) -> None:
     """Train the model (with W&B sweep support and GCS upload)"""
-    
+
     # Set seed for reproducibility
     set_seed(cfg.get("seed", 42))
-    
+
     # Get unique job ID
     job_id = os.environ.get("CLOUD_ML_JOB_ID", wandb.util.generate_id())
-    
+
     # Initialize W&B
     run = wandb.init(
         entity=os.getenv("WANDB_ENTITY"),
@@ -81,7 +81,7 @@ def train(cfg: DictConfig) -> None:
             "model_name": cfg.model.name,
         },
     )
-    
+
     # Override config with W&B sweep values (if running sweep)
     if wandb.config.get("lr"):
         cfg.hyperparameters.lr = wandb.config.lr
@@ -301,7 +301,7 @@ def train(cfg: DictConfig) -> None:
             )
             logger.info(f"Saved checkpoint at epoch {epoch + 1}")
             # Upload checkpoint to GCS
-            upload_to_gcs(str(checkpoint_path), f"models/checkpoint_epoch{epoch+1}_{job_id}.pth")
+            upload_to_gcs(str(checkpoint_path), f"models/checkpoint_epoch{epoch + 1}_{job_id}.pth")
 
         scores_list = torch.cat(scores_list, 0)
         targets_list = torch.cat(targets_list, 0)
@@ -346,7 +346,7 @@ def train(cfg: DictConfig) -> None:
         },
     )
     logger.info(f"Saved final model to {final_model_path}")
-    
+
     # Upload final model to GCS
     upload_to_gcs(str(final_model_path), f"models/final_model_{job_id}.pth")
     upload_to_gcs(str(cfg.paths.best_model_file), f"models/best_model_{job_id}.pth")
@@ -388,12 +388,12 @@ def train(cfg: DictConfig) -> None:
     fig.savefig(report_path, dpi=300, bbox_inches="tight")
     wandb.log({"training_curves": wandb.Image(fig)})
     logger.info(f"Saved training curves to {report_path}")
-    
+
     # Upload plots to GCS
     upload_to_gcs(str(report_path), f"reports/training_curves_{job_id}.png")
 
     plt.close()
-    
+
     # Finish W&B run
     wandb.finish()
 
