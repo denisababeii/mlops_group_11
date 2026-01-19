@@ -24,7 +24,6 @@ from mlops_group_11.model import experimental_convert_model_to_onnx
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs", version_base=None)
 def main(cfg: DictConfig) -> None:
     """Convert trained model to ONNX format using Hydra config."""
-    # Convert the trained model to ONNX format
     experimental_convert_model_to_onnx(
         model_name=cfg.model.name,
         checkpoint_path=Path(cfg.paths.best_model_file),
