@@ -33,6 +33,11 @@ dependencies = [
     "kaggle>=1.6.0",
     "dotenv>=0.9.9",
     "wandb>=0.24.0",
+    "dvc>=3.66.1",
+    "dvc-gs>=3.0.2",
+    "google-cloud-storage>=3.8.0",
+    "pyyaml>=6.0.3",
+    "python-multipart>=0.0.21",
 ]
 
 [dependency-groups]
