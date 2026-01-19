@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: dockerfiles/api.dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    container_name: mlops-group-11-backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: dockerfiles/frontend.dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - BACKEND=http://backend:8000
+    depends_on:
+      - backend
+    container_name: mlops-group-11-frontend
