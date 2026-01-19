@@ -39,7 +39,7 @@ def predict_poster(image: bytes, backend: str, threshold: float = 0.5, topk: int
     """Send the image to the backend for prediction."""
     predict_url = f"{backend}/predict"
     params = {"threshold": threshold, "topk": topk}
-    files={"file": image}
+    files = {"file": image}
 
     response = requests.post(predict_url, params=params, files=files, timeout=10)
     if response.status_code == 200:
@@ -96,7 +96,6 @@ def main() -> None:
                 st.write(f"{genre_text} movie!")
             else:
                 st.write("Sadly, no genres exceeded the selected probability threshold.")
-
 
             st.subheader("Top-K predictions")
             topk_items = result.get("topk", [])
