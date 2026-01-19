@@ -27,8 +27,8 @@ def main(cfg: DictConfig) -> None:
     experimental_convert_model_to_onnx(
         model_name=cfg.model.name,
         checkpoint_path=Path(cfg.paths.best_model_file),
-        output_path=Path('models/model.onnx'),
-        num_classes=cfg.model.num_classes
+        output_path=Path("models/model.onnx"),
+        num_classes=cfg.model.num_classes,
     )
 
 

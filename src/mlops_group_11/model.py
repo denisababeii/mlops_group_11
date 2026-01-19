@@ -272,12 +272,13 @@ def count_parameters_by_layer(model: nn.Module) -> Dict[str, int]:
 
     return layer_params
 
+
 def replace_adaptive_avg_pool2d(model: nn.Module) -> nn.Module:
     """Recursively replace all AdaptiveAvgPool2d layers with ONNX-compatible version.
-    
+
     Args:
         model: PyTorch model to modify.
-        
+
     Returns:
         Modified model with replaced layers.
     """
@@ -291,6 +292,7 @@ def replace_adaptive_avg_pool2d(model: nn.Module) -> nn.Module:
             replace_adaptive_avg_pool2d(module)
     return model
 
+
 def convert_model_to_onnx(
     model_name: str,
     checkpoint_path: Path,
@@ -300,7 +302,7 @@ def convert_model_to_onnx(
     device: Optional[torch.device] = None,
 ) -> None:
     """Convert a trained model to ONNX format.
-    
+
     Args:
         model_name: Name of the timm model.
         checkpoint_path: Path to the model checkpoint.
@@ -320,9 +322,7 @@ def convert_model_to_onnx(
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-    model = load_model(
-        model_name=model_name, checkpoint_path=checkpoint_path, num_classes=num_classes, device=device
-    )
+    model = load_model(model_name=model_name, checkpoint_path=checkpoint_path, num_classes=num_classes, device=device)
     model.eval()
     logger.info("Model loaded successfully")
 
@@ -333,7 +333,7 @@ def convert_model_to_onnx(
 
     # Create dummy input for tracing
     dummy_input = torch.randn(input_shape).to(device)
-    
+
     # Ensure output directory exists
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -351,8 +351,9 @@ def convert_model_to_onnx(
         dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
         opset_version=14,
     )
-    
+
     logger.info(f"Model successfully exported to ONNX format: {output_path}")
+
 
 if __name__ == "__main__":
     """ Example usage and quick validation """
