@@ -1,0 +1,11 @@
+api_server:
+  workers: 1
+  timeout: 300
+  max_request_size: 104857600  # 100MB
+  
+http:
+  port: 3001
+  request_timeout: 300
+  cors:
+    enabled: true
+    access_control_allow_origins: ["*"]

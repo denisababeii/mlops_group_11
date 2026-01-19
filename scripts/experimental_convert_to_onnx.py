@@ -4,6 +4,8 @@ This script converts a trained PyTorch model to ONNX (Open Neural Network Exchan
 format for deployment and inference in production environments. ONNX provides
 interoperability between different deep learning frameworks and optimization tools.
 
+NOTE: CSATv2 models are NOT compatible with ONNX export due to dynamic operations.
+
 Usage:
     uv run scripts/experimental_convert_to_onnx.py
 
