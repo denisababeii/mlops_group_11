@@ -1,14 +1,14 @@
 # mlops_group_11
 
 ## Machine Learning Goal
-The goal of this project is to develop and train a machine learning model capable of classifying movie genres based on movie poster images. 
+The goal of this project is to develop and train a machine learning model capable of classifying movie genres based on movie poster images.
 
 ## Dataset
-The dataset used in this project consists of a collection of movie poster images and a CSV file that maps image IDs to their corresponding genres. Although the original image repository contains 7,867 poster images, we only use the 7,254 images that are referenced in the CSV file, to have the images' associated genre labels. 
+The dataset used in this project consists of a collection of movie poster images and a CSV file that maps image IDs to their corresponding genres. Although the original image repository contains 7,867 poster images, we only use the 7,254 images that are referenced in the CSV file, to have the images' associated genre labels.
 
 In total, the dataset includes 24 distinct genre classifications, as well as an additional “N/A” category for posters whose genre information is missing or unspecified. This diversity of labels presents a multi-class classification problem and allows for a comprehensive evaluation of the model’s performance across a wide range of genres.
 
-The poster images will be resized, normalized and used to train the model for multi-class classification across the 25 genre labels. 
+The poster images will be resized, normalized and used to train the model for multi-class classification across the 25 genre labels.
 
 ## Modelling
 We will leverage a pretrained model from the PyTorch Image Models (timm) library and fine-tune it for this specific task. We are planning to try various models and decide the final option based on the performance. Some models we are considering are timm/csatv2_21m.sw_r512_in1k, timm/resnet50.a1_in1k, timm/resnet32ts.ra2_in1k.
@@ -68,3 +68,61 @@ The directory structure of the project looks like this:
 ├── requirements_dev.txt      # Development requirements
 └── tasks.py                  # Project tasks
 ```
+
+## Running the Application
+
+### Option 1: Using Docker Compose
+
+The easiest way to run both the backend API and frontend together:
+
+```bash
+# Build and start both services
+docker compose up --build
+
+# Or run in detached mode
+docker compose up -d --build
+
+# Stop the services
+docker compose down
+```
+
+The services will be locally available at:
+- Backend API: http://localhost:8000
+- Frontend: http://localhost:8001
+
+### Option 2: Running Containers Standalone
+
+#### Backend API
+
+```bash
+# Build the backend image
+docker build -t backend -f dockerfiles/api.dockerfile .
+
+# Run the backend container
+docker run --rm -p 8000:8000 backend
+
+# Or with custom port
+docker run --rm -p 8080:8080 -e "PORT=8080" backend
+```
+
+#### Frontend
+
+Build the frontend image:
+
+```bash
+docker build -t frontend -f dockerfiles/frontend.dockerfile .
+```
+
+Run the frontend container (platform-specific commands below):
+
+**macOS/Windows:**
+```bash
+docker run --rm -p 8001:8001 -e "BACKEND=http://host.docker.internal:8000" frontend
+```
+
+**Linux:**
+```bash
+docker run --rm -p 8001:8001 -e "BACKEND=http://172.17.0.1:8000" frontend
+```
+
+> **Note:** When running standalone, the frontend needs to connect to the backend. Use `host.docker.internal` on macOS/Windows or `172.17.0.1` on Linux to access services running on the host machine.
