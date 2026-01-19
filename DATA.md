@@ -1,5 +1,7 @@
 # Data Setup Instructions
 
+Created with the help of Claude :D
+
 ## For New Team Members
 
 ### 1. Clone the Repository
