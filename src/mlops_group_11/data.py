@@ -14,7 +14,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, TensorDataset
 from torchvision import transforms
-
+import matplotlib.pyplot as plt
 
 class MyDataset(Dataset):
     """Raw movie poster dataset (multi-label classification).
@@ -345,6 +345,8 @@ def run_data_pipeline(
 
     print("Data pipeline complete.")
 
+    dataset_statistics(output_folder)
+
 
 def poster_dataset(processed_path: Path = Path("data/processed")) -> Tuple[TensorDataset, TensorDataset, TensorDataset]:
     """Load the processed movie poster dataset.
@@ -391,6 +393,64 @@ def poster_dataset(processed_path: Path = Path("data/processed")) -> Tuple[Tenso
         TensorDataset(test_images, test_targets),
     )
 
+
+def dataset_statistics(datadir: str = "data/processed") -> None:
+    """Compute dataset statistics."""
+
+    datadir = Path(datadir)
+
+    train_ds, val_ds, test_ds = poster_dataset(datadir)
+
+    print("=== Dataset statistics ===\n")
+
+    print(f"Train samples: {len(train_ds)}")
+    print(f"Validation samples: {len(val_ds)}")
+    print(f"Test samples: {len(test_ds)}")
+
+    image, target = train_ds[0]
+    print(f"\nImage shape: {image.shape}")
+    print(f"Target shape: {target.shape}")
+
+    # Load genre names
+    with open(datadir / "label_names.json") as f:
+        genre_names = json.load(f)
+
+    num_genres = len(genre_names)
+    print(f"Number of genres: {num_genres}")
+
+    images = torch.stack([train_ds[i][0] for i in range(min(25, len(train_ds)))])
+
+    fig, axes = plt.subplots(5, 5, figsize=(10, 10))
+    axes = axes.flatten()
+
+    for ax, img in zip(axes, images):
+        img = img.permute(1, 2, 0)
+        img = (img - img.min()) / (img.max() - img.min())
+        ax.imshow(img)
+        ax.axis("off")
+
+    # Save sample images
+    plt.tight_layout()
+    plt.savefig("sample_images.png")
+    plt.close()
+
+    train_targets = torch.stack([t for _, t in train_ds])
+    train_dist = train_targets.sum(dim=0)
+
+    plt.figure(figsize=(12, 4))
+    plt.bar(range(num_genres), train_dist)
+    plt.xticks(range(num_genres), genre_names, rotation=90)
+    plt.ylabel("Count")
+    plt.title("Train genre distribution")
+    plt.tight_layout()
+    
+    # Save genre distribution
+    plt.savefig("train_genre_distribution.png")
+    plt.close()
+
+    # Average number of labels per image
+    avg_labels = train_targets.sum(dim=1).float().mean()
+    print(f"\nAverage genres per image (train): {avg_labels:.2f}")
 
 if __name__ == "__main__":
     typer.run(run_data_pipeline)
