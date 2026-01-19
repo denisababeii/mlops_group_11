@@ -37,6 +37,7 @@ dependencies = [
     "onnxruntime>=1.23.2",
     "onnxscript>=0.5.0",
     "bentoml>=1.4.33",
+    "python-multipart>=0.0.21",
 ]
 
 [dependency-groups]
