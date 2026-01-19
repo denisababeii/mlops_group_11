@@ -3,6 +3,7 @@ import timm
 import torch
 import torch.nn as nn
 
+
 class AdaptiveAvgPool2dCustom(nn.Module):
     """Custom AdaptiveAvgPool2d for ONNX export compatibility.
     

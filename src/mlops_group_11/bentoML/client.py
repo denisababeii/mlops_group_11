@@ -1,5 +1,5 @@
-from service import PosterClassifierService
 import numpy as np
+from service import PosterClassifierService
 
 # Initialize service
 service = PosterClassifierService()

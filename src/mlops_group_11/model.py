@@ -8,11 +8,12 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from mlops_group_11.src.mlops_group_11.adaptive_avg_pool_2d_custom import AdaptiveAvgPool2dCustom
 import numpy as np
 import timm
 import torch
 import torch.nn as nn
+
+from mlops_group_11.src.mlops_group_11.adaptive_avg_pool_2d_custom import AdaptiveAvgPool2dCustom
 
 # Configure logging
 logging.basicConfig(

@@ -3,17 +3,18 @@ from __future__ import annotations
 import base64
 import io
 import json
+import time
 from pathlib import Path
 from urllib.request import urlopen
 
 import bentoml
 import numpy as np
 import onnxruntime as ort
-import time
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
 from PIL import Image
 from torchvision import transforms
+
 
 @bentoml.service(
     workers=4,
