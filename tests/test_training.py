@@ -23,8 +23,12 @@ def test_train_returns_gracefully_when_data_missing(monkeypatch, tmp_path: Path)
 
     monkeypatch.setattr(train_module, "poster_dataset", _fake_poster_dataset)
 
-    # Mock wandb to avoid API key requirement
+    # Mock wandb to avoid API key requirement.
     mock_wandb = MagicMock()
+    mock_run = MagicMock()
+    mock_run.config = {} 
+    mock_wandb.init.return_value = mock_run
+    mock_wandb.config = {}
     monkeypatch.setattr(train_module, "wandb", mock_wandb)
 
     # Build a minimal Hydra-like config (only fields train() uses)
@@ -32,7 +36,12 @@ def test_train_returns_gracefully_when_data_missing(monkeypatch, tmp_path: Path)
         {
             "model": {"name": "resnet18", "pretrained": False, "num_classes": 3},
             "data": {"processed_path": str(tmp_path / "does_not_exist")},
-            "hyperparameters": {"batch_size": 2, "lr": 1e-3, "epochs": 1, "prob_threshold": 0.5},
+            "hyperparameters": {
+                "batch_size": 2,
+                "lr": 1e-3,  
+                "epochs": 1,
+                "prob_threshold": 0.5
+            },
             "logging": {"save_frequency": 1},
             "paths": {
                 "best_model_file": str(tmp_path / "best.ckpt"),
