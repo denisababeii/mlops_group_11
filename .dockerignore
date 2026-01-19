@@ -34,4 +34,5 @@ reports/figures/*.png
 # Other
 *.log
 .DS_Store
-notebooks/
+notebooks/.env
+sweep_job_config.yaml

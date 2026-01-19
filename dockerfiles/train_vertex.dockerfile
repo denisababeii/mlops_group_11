@@ -30,7 +30,11 @@ ENV UV_LINK_MODE=copy
 RUN uv sync --locked --no-cache --no-install-project && \
     uv add google-cloud-storage --no-cache
 
-# Download data from GCS, then train
+# Support both regular training and sweep agents
 ENTRYPOINT ["sh", "-c", "\
     uv run python scripts/download_data_gcs.py && \
-    uv run src/mlops_group_11/train.py"]
+    if [ -n \"$WANDB_SWEEP_ID\" ]; then \
+      uv run wandb agent ${WANDB_ENTITY}/${WANDB_PROJECT}/${WANDB_SWEEP_ID} --count 1; \
+    else \
+      uv run src/mlops_group_11/train.py; \
+    fi"]

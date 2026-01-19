@@ -8,3 +8,5 @@ __pycache__/
 *.pyc
 .pytest_cache/
 *.log
+.env
+sweep_job_config.yaml
