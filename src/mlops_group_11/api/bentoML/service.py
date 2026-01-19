@@ -28,7 +28,7 @@ class PosterClassifierService:
     def __init__(self) -> None:
         """Initialize the service and load the ONNX model."""
         # Load Hydra configuration
-        config_dir = str(Path(__file__).parent.parent.parent.parent / "configs")
+        config_dir = str(Path(__file__).parent.parent.parent.parent.parent / "configs")
         with initialize_config_dir(config_dir=config_dir, version_base=None):
             self.cfg: DictConfig = compose(config_name="config")
 
@@ -41,7 +41,7 @@ class PosterClassifierService:
         print(f"Model: {self.model_name}, Classes: {self.num_classes}, Threshold: {self.threshold}")
 
         # Load ONNX model
-        onnx_path = Path(__file__).parent.parent.parent.parent / "models" / "model.onnx"
+        onnx_path = Path(__file__).parent.parent.parent.parent.parent / "models" / "model.onnx"
 
         if not onnx_path.exists():
             raise FileNotFoundError(
@@ -80,7 +80,7 @@ class PosterClassifierService:
         )
 
         # Load genre labels from JSON file
-        label_names_path = Path(__file__).parent.parent.parent.parent / "data" / "processed" / "label_names.json"
+        label_names_path = Path(__file__).parent.parent.parent.parent.parent / "data" / "processed" / "label_names.json"
 
         if not label_names_path.exists():
             raise FileNotFoundError(

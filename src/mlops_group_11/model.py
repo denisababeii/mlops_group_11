@@ -13,7 +13,7 @@ import timm
 import torch
 import torch.nn as nn
 
-from mlops_group_11.src.mlops_group_11.adaptive_avg_pool_2d_custom import AdaptiveAvgPool2dCustom
+from mlops_group_11.adaptive_avg_pool_2d_custom import AdaptiveAvgPool2dCustom
 
 # Configure logging
 logging.basicConfig(
