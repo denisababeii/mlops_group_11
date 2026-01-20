@@ -33,6 +33,14 @@ dependencies = [
     "kaggle>=1.6.0",
     "dotenv>=0.9.9",
     "wandb>=0.24.0",
+    "onnx>=1.19.0",
+    "onnxruntime>=1.23.2",
+    "onnxscript>=0.5.0",
+    "bentoml>=1.4.33",
+    "dvc>=3.66.1",
+    "dvc-gs>=3.0.2",
+    "google-cloud-storage>=3.8.0",
+    "pyyaml>=6.0.3",
     "python-multipart>=0.0.21",
 ]
 
@@ -42,7 +50,7 @@ dev = [
     "pre-commit==4.1.0",
     "pytest==8.3.4",
     "coverage==7.13.1",
-    "ruff==0.14.11",
+    "ruff==0.14.13",
     "mkdocs==1.6.1",
     "mkdocs-material==9.7.1",
     "mkdocstrings-python==2.0.1",

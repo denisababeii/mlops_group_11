@@ -4,7 +4,7 @@ import torch
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from mlops_group_11.api import app
+from mlops_group_11.api.fast_api import app
 
 client = TestClient(app)
 
@@ -22,7 +22,7 @@ def test_predict_with_dummy_model(monkeypatch):
     """
     API test: verify /predict endpoint works with a dummy model.
     """
-    import mlops_group_11.api as api
+    import mlops_group_11.api.fast_api as api
 
     class DummyModel(torch.nn.Module):
         def forward(self, x):
