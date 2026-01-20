@@ -8,6 +8,7 @@ from typing import Any
 import torch
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image
+from prometheus_client import Counter, make_asgi_app
 from torchvision import transforms
 
 from mlops_group_11.model import load_model
@@ -35,6 +36,9 @@ _transform = transforms.Compose(
         ),
     ]
 )
+
+prediction_error_counter = Counter("prediction_error", "Number of prediction errors")
+health_error_counter = Counter("health_error", "Number of health errors")
 
 
 @asynccontextmanager
@@ -71,6 +75,8 @@ app = FastAPI(
     title="MLOps Group 11 - Poster Genre Inference API",
     lifespan=lifespan,
 )
+
+app.mount("/metrics", make_asgi_app())
 
 
 # Loaded once (cached)
@@ -116,7 +122,8 @@ def health() -> dict[str, Any]:
             "num_labels": len(_labels or []),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        health_error_counter.inc()
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE_MB", "10")) * 1024 * 1024  # Default 10MB in bytes
@@ -128,45 +135,49 @@ async def predict(
     threshold: float = DEFAULT_THRESHOLD,
     topk: int = DEFAULT_TOPK,
 ) -> dict[str, Any]:
-    _ensure_loaded()
-    assert _model is not None and _device is not None and _labels is not None
-
-    # Read upload -> PIL
-    content = await file.read()
-
-    # Validate file size
-    if len(content) > MAX_FILE_SIZE:
-        return {"error": f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024 * 1024)}MB"}
     try:
-        img = Image.open(io.BytesIO(content)).convert("RGB")
+        _ensure_loaded()
+        assert _model is not None and _device is not None and _labels is not None
+
+        # Read upload -> PIL
+        content = await file.read()
+
+        # Validate file size
+        if len(content) > MAX_FILE_SIZE:
+            return {"error": f"File size exceeds maximum allowed size of {MAX_FILE_SIZE // (1024 * 1024)}MB"}
+        try:
+            img = Image.open(io.BytesIO(content)).convert("RGB")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Could not read uploaded file as an image: {str(e)}")
+
+        # Preprocess
+        input_tensor = _transform(img).unsqueeze(0).to(_device)  # (1,3,H,W)
+
+        # Predict (multi-label: sigmoid)
+        with torch.no_grad():
+            logits = _model(input_tensor)  # (1, num_classes)
+            probs = torch.sigmoid(logits)[0]  # (num_classes,)
+
+        probs_list = probs.detach().cpu().tolist()
+
+        # Clamp topk
+        topk = max(1, min(int(topk), len(probs_list)))
+
+        # Top-k results
+        top_indices = sorted(range(len(probs_list)), key=lambda i: probs_list[i], reverse=True)[:topk]
+        top_items = [{"label": _labels[i], "probability": float(probs_list[i])} for i in top_indices]
+
+        # All labels above threshold
+        predicted = [
+            {"label": _labels[i], "probability": float(p)} for i, p in enumerate(probs_list) if p >= float(threshold)
+        ]
+
+        return {
+            "filename": file.filename,
+            "threshold": float(threshold),
+            "predicted": predicted,
+            "topk": top_items,
+        }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Could not read uploaded file as an image: {str(e)}")
-
-    # Preprocess
-    input_tensor = _transform(img).unsqueeze(0).to(_device)  # (1,3,H,W)
-
-    # Predict (multi-label: sigmoid)
-    with torch.no_grad():
-        logits = _model(input_tensor)  # (1, num_classes)
-        probs = torch.sigmoid(logits)[0]  # (num_classes,)
-
-    probs_list = probs.detach().cpu().tolist()
-
-    # Clamp topk
-    topk = max(1, min(int(topk), len(probs_list)))
-
-    # Top-k results
-    top_indices = sorted(range(len(probs_list)), key=lambda i: probs_list[i], reverse=True)[:topk]
-    top_items = [{"label": _labels[i], "probability": float(probs_list[i])} for i in top_indices]
-
-    # All labels above threshold
-    predicted = [
-        {"label": _labels[i], "probability": float(p)} for i, p in enumerate(probs_list) if p >= float(threshold)
-    ]
-
-    return {
-        "filename": file.filename,
-        "threshold": float(threshold),
-        "predicted": predicted,
-        "topk": top_items,
-    }
+        prediction_error_counter.inc()
+        raise HTTPException(status_code=500, detail=str(e)) from e
