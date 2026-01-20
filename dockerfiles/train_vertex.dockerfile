@@ -17,7 +17,6 @@ COPY README.md README.md
 # Copy source code and configs
 COPY src src/
 COPY configs configs/
-COPY scripts scripts/
 COPY models models/
 COPY reports reports/
 
@@ -32,7 +31,7 @@ RUN uv sync --locked --no-cache --no-install-project && \
 
 # Support both regular training and sweep agents
 ENTRYPOINT ["sh", "-c", "\
-    uv run python scripts/download_data_gcs.py && \
+    dvc pull && \
     if [ -n \"$WANDB_SWEEP_ID\" ]; then \
       uv run wandb agent ${WANDB_ENTITY}/${WANDB_PROJECT}/${WANDB_SWEEP_ID} --count 1; \
     else \
