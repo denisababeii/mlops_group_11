@@ -42,6 +42,7 @@ dependencies = [
     "google-cloud-storage>=3.8.0",
     "pyyaml>=6.0.3",
     "python-multipart>=0.0.21",
+    "prometheus-client>=0.24.1",
 ]
 
 [dependency-groups]
