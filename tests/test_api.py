@@ -9,10 +9,23 @@ from mlops_group_11.api.fast_api import app
 client = TestClient(app)
 
 
-def test_health_responds(capsys):
+def test_health_responds(capsys, monkeypatch):
     """
     API test: verify /health endpoint responds correctly.
     """
+    import mlops_group_11.api.fast_api as api
+
+    class DummyModel(torch.nn.Module):
+        def forward(self, x):
+            return torch.zeros((x.shape[0], 24), dtype=torch.float32)
+
+    def fake_ensure_loaded():
+        api._device = torch.device("cpu")
+        api._model = DummyModel()
+        api._labels = [f"label_{i}" for i in range(24)]
+
+    monkeypatch.setattr(api, "_ensure_loaded", fake_ensure_loaded)
+
     r = client.get("/health")
     print(f"Health response: {r.json()}")
     with capsys.disabled():
