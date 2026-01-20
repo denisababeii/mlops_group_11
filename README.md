@@ -68,3 +68,61 @@ The directory structure of the project looks like this:
 ├── requirements_dev.txt      # Development requirements
 └── tasks.py                  # Project tasks
 ```
+
+## Running the Application
+
+### Option 1: Using Docker Compose
+
+The easiest way to run both the backend API and frontend together:
+
+```bash
+# Build and start both services
+docker compose up --build
+
+# Or run in detached mode
+docker compose up -d --build
+
+# Stop the services
+docker compose down
+```
+
+The services will be locally available at:
+- Backend API: http://localhost:8000
+- Frontend: http://localhost:8001
+
+### Option 2: Running Containers Standalone
+
+#### Backend API
+
+```bash
+# Build the backend image
+docker build -t backend -f dockerfiles/api.dockerfile .
+
+# Run the backend container
+docker run --rm -p 8000:8000 backend
+
+# Or with custom port
+docker run --rm -p 8080:8080 -e "PORT=8080" backend
+```
+
+#### Frontend
+
+Build the frontend image:
+
+```bash
+docker build -t frontend -f dockerfiles/frontend.dockerfile .
+```
+
+Run the frontend container (platform-specific commands below):
+
+**macOS/Windows:**
+```bash
+docker run --rm -p 8001:8001 -e "BACKEND=http://host.docker.internal:8000" frontend
+```
+
+**Linux:**
+```bash
+docker run --rm -p 8001:8001 -e "BACKEND=http://172.17.0.1:8000" frontend
+```
+
+> **Note:** When running standalone, the frontend needs to connect to the backend. Use `host.docker.internal` on macOS/Windows or `172.17.0.1` on Linux to access services running on the host machine.
