@@ -34,7 +34,6 @@ def test_health_responds(capsys, monkeypatch):
     assert "status" in r.json()
 
 
-
 def test_predict_with_dummy_model(monkeypatch):
     """
     API test: verify /predict endpoint works with a dummy model.
