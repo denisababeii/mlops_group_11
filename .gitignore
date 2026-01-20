@@ -188,5 +188,3 @@ HEAD
 # Logging
 logs/
 wandb/
-sweep_job_config.yaml
-
