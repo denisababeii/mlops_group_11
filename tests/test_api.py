@@ -1,5 +1,6 @@
 import io
 
+import pytest
 import torch
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -9,10 +10,9 @@ from mlops_group_11.api.fast_api import app
 client = TestClient(app)
 
 
-def test_health_responds(capsys, monkeypatch):
-    """
-    API test: verify /health endpoint responds correctly.
-    """
+@pytest.fixture
+def mock_api_dependencies(monkeypatch):
+    """Mock the API model, device, and labels to avoid loading actual files."""
     import mlops_group_11.api.fast_api as api
 
     class DummyModel(torch.nn.Module):
@@ -26,32 +26,20 @@ def test_health_responds(capsys, monkeypatch):
 
     monkeypatch.setattr(api, "_ensure_loaded", fake_ensure_loaded)
 
+
+def test_health_responds(mock_api_dependencies):
+    """
+    API test: verify /health endpoint responds correctly.
+    """
     r = client.get("/health")
-    print(f"Health response: {r.json()}")
-    with capsys.disabled():
-        print(f"\n=== Health Endpoint Response ===\n{r.json()}\n")
     assert r.status_code == 200
     assert "status" in r.json()
 
 
-def test_predict_with_dummy_model(monkeypatch):
+def test_predict_with_dummy_model(mock_api_dependencies):
     """
     API test: verify /predict endpoint works with a dummy model.
     """
-    import mlops_group_11.api.fast_api as api
-
-    class DummyModel(torch.nn.Module):
-        def forward(self, x):
-            # logits shape must match NUM_CLASSES=24
-            return torch.zeros((x.shape[0], 24), dtype=torch.float32)
-
-    def fake_ensure_loaded():
-        api._device = torch.device("cpu")
-        api._model = DummyModel()
-        api._labels = [f"label_{i}" for i in range(24)]
-
-    monkeypatch.setattr(api, "_ensure_loaded", fake_ensure_loaded)
-
     # Create a dummy image
     img = Image.new("RGB", (224, 224))
     buf = io.BytesIO()  # in-memory buffer
