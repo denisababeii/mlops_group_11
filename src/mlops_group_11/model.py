@@ -8,9 +8,12 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import timm
 import torch
 import torch.nn as nn
+
+from mlops_group_11.adaptive_avg_pool_2d_custom import AdaptiveAvgPool2dCustom
 
 # Configure logging
 logging.basicConfig(
@@ -268,6 +271,88 @@ def count_parameters_by_layer(model: nn.Module) -> Dict[str, int]:
                 layer_params[name] = num_params
 
     return layer_params
+
+
+def replace_adaptive_avg_pool2d(model: nn.Module) -> nn.Module:
+    """Recursively replace all AdaptiveAvgPool2d layers with ONNX-compatible version.
+
+    Args:
+        model: PyTorch model to modify.
+
+    Returns:
+        Modified model with replaced layers.
+    """
+    for name, module in model.named_children():
+        if isinstance(module, nn.AdaptiveAvgPool2d):
+            # Replace with custom implementation
+            setattr(model, name, AdaptiveAvgPool2dCustom(module.output_size))
+            logger.info(f"Replaced AdaptiveAvgPool2d at {name} with ONNX-compatible version")
+        else:
+            # Recursively process child modules
+            replace_adaptive_avg_pool2d(module)
+    return model
+
+
+def convert_model_to_onnx(
+    model_name: str,
+    checkpoint_path: Path,
+    output_path: Path,
+    num_classes: int = 24,
+    input_shape: tuple = (1, 3, 224, 224),
+    device: Optional[torch.device] = None,
+) -> None:
+    """Convert a trained model to ONNX format.
+
+    Args:
+        model_name: Name of the timm model.
+        checkpoint_path: Path to the model checkpoint.
+        output_path: Path where ONNX model will be saved.
+        num_classes: Number of output classes (default: 24).
+        input_shape: Shape of dummy input tensor (B, C, H, W) (default: (1, 3, 224, 224)).
+        device: Device to use for conversion (default: auto-detect).
+    """
+    logger.info("Starting ONNX conversion")
+
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using device: {device}")
+
+    # Load model
+    logger.info("Loading model...")
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+    model = load_model(model_name=model_name, checkpoint_path=checkpoint_path, num_classes=num_classes, device=device)
+    model.eval()
+    logger.info("Model loaded successfully")
+
+    # Replace AdaptiveAvgPool2d layers with ONNX-compatible version
+    # This fixes: https://github.com/pytorch/pytorch/issues/42653
+    logger.info("Replacing AdaptiveAvgPool2d layers for ONNX compatibility...")
+    model = replace_adaptive_avg_pool2d(model)
+
+    # Create dummy input for tracing
+    dummy_input = torch.randn(input_shape).to(device)
+
+    # Ensure output directory exists
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Export to ONNX
+    # Note: Only batch dimension is dynamic. Height/width must be fixed due to adaptive_avg_pool2d limitation
+    # See: https://github.com/pytorch/pytorch/issues/42653
+    # Using opset_version=14 for scaled_dot_product_attention support
+    torch.onnx.export(
+        model=model,
+        args=dummy_input,
+        f=str(output_path),
+        input_names=["input"],
+        output_names=["output"],
+        dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+        opset_version=14,
+    )
+
+    logger.info(f"Model successfully exported to ONNX format: {output_path}")
 
 
 if __name__ == "__main__":
