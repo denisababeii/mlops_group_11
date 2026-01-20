@@ -40,6 +40,7 @@ _transform = transforms.Compose(
 prediction_error_counter = Counter("prediction_error", "Number of prediction errors")
 health_error_counter = Counter("health_error", "Number of health errors")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _model, _device, _labels
