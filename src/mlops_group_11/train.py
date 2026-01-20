@@ -1,13 +1,16 @@
 import logging
 import os
+import random
 from contextlib import nullcontext
 from pathlib import Path
 
 import hydra
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import wandb
 from dotenv import load_dotenv
+from google.cloud import storage
 from omegaconf import DictConfig
 from sklearn.metrics import (
     RocCurveDisplay,
@@ -33,12 +36,43 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def set_seed(seed=42):
+    """Set random seeds for reproducibility."""
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def upload_to_gcs(local_path: str, gcs_path: str, bucket_name: str = "mlops-group11-data"):
+    """Upload file to GCS bucket."""
+    try:
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(gcs_path)
+        blob.upload_from_filename(local_path)
+        logger.info(f"✅ Uploaded {gcs_path} to GCS")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to upload to GCS: {e}")
+
+
 @hydra.main(config_name="config.yaml", config_path=f"{os.getcwd()}/configs", version_base=None)
 def train(cfg: DictConfig) -> None:
-    """Train the model (with checkpointing)"""
+    """Train the model (with W&B sweep support and GCS upload)"""
+
+    # Set seed for reproducibility
+    set_seed(cfg.get("seed", 42))
+
+    # Get unique job ID
+    job_id = os.environ.get("CLOUD_ML_JOB_ID", wandb.util.generate_id())
+
+    # Initialize W&B
     run = wandb.init(
         entity=os.getenv("WANDB_ENTITY"),
         project=os.getenv("WANDB_PROJECT"),
+        name=f"train-{cfg.model.name}-{job_id}",
         config={
             "lr": cfg.hyperparameters.lr,
             "batch_size": cfg.hyperparameters.batch_size,
@@ -47,6 +81,18 @@ def train(cfg: DictConfig) -> None:
             "model_name": cfg.model.name,
         },
     )
+
+    # Override config with W&B sweep values (if running sweep)
+    if wandb.config.get("lr"):
+        cfg.hyperparameters.lr = wandb.config.lr
+    if wandb.config.get("batch_size"):
+        cfg.hyperparameters.batch_size = wandb.config.batch_size
+    if wandb.config.get("epochs"):
+        cfg.hyperparameters.epochs = wandb.config.epochs
+    if wandb.config.get("model_name"):
+        cfg.model.name = wandb.config.model_name
+    if wandb.config.get("prob_threshold"):
+        cfg.hyperparameters.prob_threshold = wandb.config.prob_threshold
 
     logger.info("Starting training")
 
@@ -89,7 +135,7 @@ def train(cfg: DictConfig) -> None:
     logger.info(f"Train dataset size: {len(train_dataset)}")
 
     # Setup training
-    criterion = nn.BCEWithLogitsLoss()  # Use float32 labels
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=cfg.hyperparameters.lr)
 
     # Tracking
@@ -104,8 +150,6 @@ def train(cfg: DictConfig) -> None:
         logger.info(f"Epoch {epoch + 1}/{cfg.hyperparameters.epochs}")
 
         do_profile = bool(cfg.profiling.enabled) and (epoch < cfg.profiling.num_epochs)
-
-        # Choose how many batches to run this epoch (only reduced when profiling)
         max_batches = cfg.profiling.num_batches if do_profile else None
 
         activities = [ProfilerActivity.CPU]
@@ -169,7 +213,7 @@ def train(cfg: DictConfig) -> None:
                     logger.info(f"Batch {batch_idx + 1}/{len(train_loader)}: Loss: {loss.item():.4f}")
 
                     # Plot input images
-                    grid = make_grid(images[:16].detach().cpu(), nrow=4, normalize=True)  # (C, H, W)
+                    grid = make_grid(images[:16].detach().cpu(), nrow=4, normalize=True)
                     wandb.log({"images_grid": wandb.Image(grid, caption="Train batch grid")})
 
                     # Plot histogram of the gradients
@@ -245,9 +289,10 @@ def train(cfg: DictConfig) -> None:
 
         # Periodic checkpointing
         if (epoch + 1) % cfg.logging.save_frequency == 0:
+            checkpoint_path = Path(cfg.paths.checkpoint_file)
             save_model(
                 model,
-                Path(cfg.paths.checkpoint_file),
+                checkpoint_path,
                 metadata={
                     "epoch": epoch + 1,
                     "train_loss": train_loss,
@@ -255,6 +300,8 @@ def train(cfg: DictConfig) -> None:
                 },
             )
             logger.info(f"Saved checkpoint at epoch {epoch + 1}")
+            # Upload checkpoint to GCS
+            upload_to_gcs(str(checkpoint_path), f"models/checkpoint_epoch{epoch + 1}_{job_id}.pth")
 
         scores_list = torch.cat(scores_list, 0)
         targets_list = torch.cat(targets_list, 0)
@@ -287,9 +334,10 @@ def train(cfg: DictConfig) -> None:
     final_f1 = f1_score(labels, preds, average="samples", zero_division=0)
 
     # Save final model
+    final_model_path = Path(cfg.paths.checkpoint_file)
     save_model(
         model,
-        Path(cfg.paths.checkpoint_file),
+        final_model_path,
         metadata={
             "epoch": cfg.hyperparameters.epochs,
             "train_loss": train_losses[-1],
@@ -297,7 +345,11 @@ def train(cfg: DictConfig) -> None:
             "status": "training_completed",
         },
     )
-    logger.info(f"Saved final model to {cfg.paths.checkpoint_file}")
+    logger.info(f"Saved final model to {final_model_path}")
+
+    # Upload final model to GCS
+    upload_to_gcs(str(final_model_path), f"models/final_model_{job_id}.pth")
+    upload_to_gcs(str(cfg.paths.best_model_file), f"models/best_model_{job_id}.pth")
 
     # Save model as wandb artifact
     artifact = wandb.Artifact(
@@ -310,12 +362,13 @@ def train(cfg: DictConfig) -> None:
             "f1": final_f1,
         },
     )
-    artifact.add_file(str(Path(cfg.paths.checkpoint_file)))
+    artifact.add_file(str(final_model_path))
     run.log_artifact(artifact)
 
     # Plot training curves
     fig, axs = plt.subplots(1, 2, figsize=(15, 5))
     axs[0].plot(train_losses, label="Train Loss")
+    axs[0].plot(val_losses, label="Val Loss")
     axs[0].set_title("Loss Curve")
     axs[0].set_xlabel("Epoch")
     axs[0].set_ylabel("Loss")
@@ -323,6 +376,7 @@ def train(cfg: DictConfig) -> None:
     axs[0].grid(True)
 
     axs[1].plot(train_accuracies, label="Train Acc")
+    axs[1].plot(val_accuracies, label="Val Acc")
     axs[1].set_title("Accuracy Curve")
     axs[1].set_xlabel("Epoch")
     axs[1].set_ylabel("Accuracy")
@@ -335,7 +389,13 @@ def train(cfg: DictConfig) -> None:
     wandb.log({"training_curves": wandb.Image(fig)})
     logger.info(f"Saved training curves to {report_path}")
 
+    # Upload plots to GCS
+    upload_to_gcs(str(report_path), f"reports/training_curves_{job_id}.png")
+
     plt.close()
+
+    # Finish W&B run
+    wandb.finish()
 
 
 if __name__ == "__main__":

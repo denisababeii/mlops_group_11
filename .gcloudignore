@@ -1,0 +1,12 @@
+.git/
+.venv/
+data/
+.dvc/cache/
+wandb/
+outputs/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+.env
+sweep_job_config.yaml

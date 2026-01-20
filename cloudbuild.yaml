@@ -1,0 +1,10 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'dockerfiles/train_vertex.dockerfile',
+      '-t', 'europe-west1-docker.pkg.dev/mlops-group-11/mlops-group11-images/train:latest',
+      '.'
+    ]
+images:
+  - 'europe-west1-docker.pkg.dev/mlops-group-11/mlops-group11-images/train:latest'
