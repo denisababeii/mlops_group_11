@@ -9,16 +9,17 @@ from mlops_group_11.api.fast_api import app
 client = TestClient(app)
 
 
-def test_health_responds():
+def test_health_responds(capsys):
     """
     API test: verify /health endpoint responds correctly.
     """
-    try:
-        r = client.get("/health")
-        assert r.status_code == 200
-        assert "status" in r.json()
-    except Exception as e:
-        print(e)
+    r = client.get("/health")
+    print(f"Health response: {r.json()}")
+    with capsys.disabled():
+        print(f"\n=== Health Endpoint Response ===\n{r.json()}\n")
+    assert r.status_code == 200
+    assert "status" in r.json()
+
 
 
 def test_predict_with_dummy_model(monkeypatch):
