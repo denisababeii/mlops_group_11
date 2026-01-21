@@ -37,7 +37,7 @@ jobs:
 
     - name: Pull data
       run: |
-        gsutil -m rsync -r gs://mlops-group11-data/files/md5/ data/processed/
+        gsutil -m rsync -r gs://mlops-group11-data/ data/processed/
 
     - name: Run dataset statistics & generate report
       run: |
