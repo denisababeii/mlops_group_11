@@ -28,7 +28,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         pip install uv
-        uv export -f requirements.txt
+        uv export -f requirements.txt --all
         python -m pip install -r requirements.txt
 
     - name: Pull data
