@@ -35,6 +35,11 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Create destination directory
+      run: |
+        mkdir -p data/processed
+        ls -la data
+
     - name: Pull data
       run: |
         gsutil -m rsync -r gs://mlops-group11-data/ data/processed/
