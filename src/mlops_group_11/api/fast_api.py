@@ -8,10 +8,11 @@ from typing import Any
 
 import torch
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
-from mlops_group_11.model import load_model
 from PIL import Image
 from prometheus_client import Counter, Histogram, make_asgi_app
 from torchvision import transforms
+
+from mlops_group_11.model import load_model
 
 # Configuration from environment variables
 
