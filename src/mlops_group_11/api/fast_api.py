@@ -136,7 +136,7 @@ def add_to_gcs_database(
         # Format data like the local CSV: timestamp,filename,genres_str,threshold,stats_str
         genres_str = "|".join([f"{g['label']}:{g['probability']:.4f}" for g in predicted])
         stats_str = (
-            f"{image_stats['mean']:.4f},{image_stats['std']:.4f}," f"{image_stats['min']:.4f},{image_stats['max']:.4f}"
+            f"{image_stats['mean']:.4f},{image_stats['std']:.4f},{image_stats['min']:.4f},{image_stats['max']:.4f}"
         )
 
         csv_line = f"{timestamp},{filename},{genres_str},{threshold},{stats_str}\n"
