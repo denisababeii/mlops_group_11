@@ -34,10 +34,10 @@ jobs:
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
-        
+
     - name: Pull data
       run: |
-        dvc pull 
+        gsutil -m rsync -r gs://mlops-group11-data/files/md5/ data/processed/
 
     - name: Run dataset statistics & generate report
       run: |
