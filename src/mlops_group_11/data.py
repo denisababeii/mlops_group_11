@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
+import matplotlib 
+matplotlib.use("Agg")
 import pandas as pd
 import torch
 import typer

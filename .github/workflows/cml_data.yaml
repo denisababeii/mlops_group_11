@@ -26,6 +26,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip install uv
         uv sync --locked
+        python -m pip list | grep matplotlib
 
     - name: Auth with GCP
       uses: google-github-actions/auth@v2
