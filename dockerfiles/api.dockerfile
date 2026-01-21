@@ -1,12 +1,17 @@
-FROM ghcr.io/astral-sh/uv:python3.12-alpine AS base
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-COPY uv.lock uv.lock
-COPY pyproject.toml pyproject.toml
+WORKDIR /app
 
-RUN uv sync --frozen --no-install-project
+COPY pyproject.toml uv.lock README.md /app/
 
-COPY src src/
+RUN --mount=type=cache,id=uv-cache-api,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --only-group api
 
-RUN uv sync --frozen
+COPY src /app/src/
+COPY models /app/models/
+COPY data /app/data/
 
-ENTRYPOINT ["uv", "run", "uvicorn", "src.mlops_group_11.api:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV PORT=8000
+
+EXPOSE 8000
+CMD ["sh", "-c", "uv run uvicorn src.mlops_group_11.api:app --host 0.0.0.0 --port ${PORT:-8000}"]

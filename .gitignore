@@ -181,6 +181,9 @@ cython_debug/
 
 # Hydra
 outputs
+HEAD
+/data
+=======
 
 # Logging
 logs/
