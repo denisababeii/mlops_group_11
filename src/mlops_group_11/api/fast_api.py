@@ -2,16 +2,16 @@ import io
 import json
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import torch
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from mlops_group_11.model import load_model
 from PIL import Image
 from prometheus_client import Counter, Histogram, make_asgi_app
 from torchvision import transforms
-
-from mlops_group_11.model import load_model
 
 # Configuration from environment variables
 
@@ -54,9 +54,8 @@ async def lifespan(app: FastAPI):
     print("Welcome to the Movie Poster Genre Inference API! 🎬")
     print("Upload a poster and discover its genres. 🍿")
 
-    yield  # <-- application runs while paused here
+    yield
 
-    # --- Shutdown ---
     # Explicitly release model and associated resources to free memory (incl. GPU).
     if _model is not None:
         _model = None
@@ -76,6 +75,44 @@ app = FastAPI(
     title="MLOps Group 11 - Poster Genre Inference API",
     lifespan=lifespan,
 )
+
+
+def _compute_image_statistics(image: Image.Image) -> dict[str, float]:
+    """Compute statistics on the input image (before preprocessing).
+
+    Args:
+        image: PIL Image object
+
+    Returns:
+        Dictionary with mean, std, min, max pixel values
+    """
+    import numpy as np
+
+    # Convert PIL Image to numpy array, then to torch tensor
+    img_array = torch.tensor(np.array(image), dtype=torch.float32)
+
+    return {
+        "mean": float(img_array.mean().item()),
+        "std": float(img_array.std().item()),
+        "min": float(img_array.min().item()),
+        "max": float(img_array.max().item()),
+    }
+
+
+def add_to_database(
+    now: str,
+    filename: str,
+    predicted: list[dict[str, Any]],
+    threshold: float,
+    image_stats: dict[str, float],
+) -> None:
+    """Add prediction and image statistics to database."""
+    genres_str = "|".join([f"{g['label']}:{g['probability']:.4f}" for g in predicted])
+    stats_str = f"{image_stats['mean']:.4f},{image_stats['std']:.4f},{image_stats['min']:.4f},{image_stats['max']:.4f}"
+
+    with open("prediction_database.csv", "a") as file:
+        file.write(f"{now},{filename},{genres_str},{threshold},{stats_str}\n")
+
 
 app.mount("/metrics", make_asgi_app())
 
@@ -135,6 +172,7 @@ async def predict(
     file: UploadFile = File(...),
     threshold: float = DEFAULT_THRESHOLD,
     topk: int = DEFAULT_TOPK,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> dict[str, Any]:
     with request_latency.time():
         try:
@@ -151,6 +189,9 @@ async def predict(
                 img = Image.open(io.BytesIO(content)).convert("RGB")
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Could not read uploaded file as an image: {str(e)}")
+
+            # Compute image statistics before preprocessing
+            image_stats = _compute_image_statistics(img)
 
             # Preprocess
             input_tensor = _transform(img).unsqueeze(0).to(_device)  # (1,3,H,W)
@@ -175,6 +216,9 @@ async def predict(
                 for i, p in enumerate(probs_list)
                 if p >= float(threshold)
             ]
+
+            now = datetime.now().isoformat()
+            background_tasks.add_task(add_to_database, now, file.filename, predicted, threshold, image_stats)
 
             return {
                 "filename": file.filename,

@@ -188,3 +188,7 @@ HEAD
 # Logging
 logs/
 wandb/
+
+# Data drift
+outputs/data_drift_report.html
+prediction_database.csv
