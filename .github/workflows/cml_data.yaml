@@ -29,7 +29,10 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install --prefer-binary "numpy>=1.24.3" "scipy" "scikit-learn"
         python -m pip install --prefer-binary "pandas>=2.0.2" "matplotlib>=3.7"
-        python -m pip install dvc[s3] torch torchvision typer cml
+        # install DVC first
+        python -m pip install --prefer-binary "dvc[s3]==3.18.0"
+        # then PyTorch and CML
+        python -m pip install torch torchvision typer cml
 
     - name: Pull data
       run: |
