@@ -8,21 +8,29 @@ from typing import Any
 
 import torch
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from google.cloud import storage
+from mlops_group_11.model import load_model
 from PIL import Image
 from prometheus_client import Counter, Histogram, make_asgi_app
 from torchvision import transforms
 
-from mlops_group_11.model import load_model
-
 # Configuration from environment variables
-
 IMAGE_SIZE = int(os.getenv("IMAGE_SIZE", "224"))
 NUM_CLASSES = int(os.getenv("NUM_CLASSES", "24"))
 MODEL_NAME = os.getenv("MODEL_NAME", "csatv2_21m.sw_r512_in1k")
 
-CHECKPOINT_PATH = Path(os.getenv("CHECKPOINT_PATH", "models/best_model.pth"))  # where the trained weights are stored
-LABELS_PATH = Path(os.getenv("LABELS_PATH", "data/processed/label_names.json"))  # where the label names JSON are stored
+# GCS configuration
+GCS_PROJECT_ID = os.getenv("GCS_PROJECT_ID", "mlops-group11")
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "mlops-group11-data")
+GCS_MODEL_PATH = os.getenv("GCS_MODEL_PATH", "models/best_model_8070986887763853312.pth")
+GCS_LABELS_PATH = os.getenv("GCS_LABELS_PATH", "data/processed/label_names.json")
+GCS_PREDICTIONS_PATH = os.getenv("GCS_PREDICTIONS_PATH", "predictions_database.csv")
 
+# Local cache paths (where to store downloaded files)
+CHECKPOINT_PATH = Path(os.getenv("CHECKPOINT_PATH", f"models/{GCS_MODEL_PATH.split('/')[-1]}"))
+CHECKPOINT_LABELS_PATH = Path(os.getenv("LABELS_PATH", "data/processed/label_names.json"))
+
+# Default prediction parameters
 DEFAULT_THRESHOLD = float(os.getenv("PROB_THRESHOLD", "0.5"))
 DEFAULT_TOPK = int(os.getenv("TOPK", "5"))
 
@@ -47,7 +55,6 @@ request_latency = Histogram("prediction_latency_seconds", "Prediction latency in
 async def lifespan(app: FastAPI):
     global _model, _device, _labels
 
-    # --- Startup ---
     # Initialize device once so that downstream code can rely on it.
     if _device is None:
         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -100,7 +107,7 @@ def _compute_image_statistics(image: Image.Image) -> dict[str, float]:
     }
 
 
-def add_to_database(
+def add_to_local_database(
     now: str,
     filename: str,
     predicted: list[dict[str, Any]],
@@ -115,6 +122,40 @@ def add_to_database(
         file.write(f"{now},{filename},{genres_str},{threshold},{stats_str}\n")
 
 
+def add_to_gcs_database(
+    timestamp: str,
+    filename: str,
+    predicted: list[dict[str, Any]],
+    topk: list[dict[str, Any]],
+    threshold: float,
+    image_stats: dict[str, float],
+) -> None:
+    """Append prediction data as a CSV row to a single file in GCS."""
+    try:
+        # Format data like the local CSV: timestamp,filename,genres_str,threshold,stats_str
+        genres_str = "|".join([f"{g['label']}:{g['probability']:.4f}" for g in predicted])
+        stats_str = (
+            f"{image_stats['mean']:.4f},{image_stats['std']:.4f}," f"{image_stats['min']:.4f},{image_stats['max']:.4f}"
+        )
+
+        csv_line = f"{timestamp},{filename},{genres_str},{threshold},{stats_str}\n"
+
+        client = storage.Client(project=GCS_PROJECT_ID)
+        bucket = client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(GCS_PREDICTIONS_PATH)
+
+        # Read existing content (if any), append, and write back
+        try:
+            existing = blob.download_as_text()
+        except Exception:
+            existing = ""
+
+        blob.upload_from_string(existing + csv_line, content_type="text/csv")
+        print(f"Prediction appended to gs://{GCS_BUCKET_NAME}/{GCS_PREDICTIONS_PATH}")
+    except Exception as e:
+        print(f"Warning: Could not save prediction to GCS: {e}")
+
+
 app.mount("/metrics", make_asgi_app())
 
 
@@ -124,10 +165,67 @@ _device: torch.device | None = None
 _labels: list[str] | None = None
 
 
+def _download_labels_from_gcs() -> None:
+    """Download label file from GCS bucket to local cache."""
+    if CHECKPOINT_LABELS_PATH.exists():
+        print(f"Using cached labels from: {CHECKPOINT_LABELS_PATH}")
+        return
+
+    try:
+        from google.cloud import storage
+
+        print(f"Downloading labels from gs://{GCS_BUCKET_NAME}/{GCS_LABELS_PATH}...")
+        client = storage.Client(project=GCS_PROJECT_ID)
+        bucket = client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(GCS_LABELS_PATH)
+
+        CHECKPOINT_LABELS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        blob.download_to_filename(str(CHECKPOINT_LABELS_PATH))
+        print(f"Labels downloaded successfully to: {CHECKPOINT_LABELS_PATH}")
+    except Exception as e:
+        print(f"Warning: Could not download labels from GCS: {e}")
+        if CHECKPOINT_LABELS_PATH.exists():
+            print(f"Falling back to local labels at: {CHECKPOINT_LABELS_PATH}")
+        else:
+            raise FileNotFoundError(
+                f"Labels not found. Failed to download from GCS and no local file exists at {CHECKPOINT_LABELS_PATH}"
+            ) from e
+
+
 def _load_labels(path: Path) -> list[str]:
+    if not path.exists():
+        _download_labels_from_gcs()
+
     if not path.exists():
         raise FileNotFoundError(f"label_names.json not found at: {path}")
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _download_model_from_gcs() -> None:
+    """Download model from GCS bucket to local cache."""
+    if CHECKPOINT_PATH.exists():
+        print(f"Using cached model from: {CHECKPOINT_PATH}")
+        return
+
+    try:
+        from google.cloud import storage
+
+        print(f"Downloading model from gs://{GCS_BUCKET_NAME}/{GCS_MODEL_PATH}...")
+        client = storage.Client(project=GCS_PROJECT_ID)
+        bucket = client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(GCS_MODEL_PATH)
+
+        CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        blob.download_to_filename(str(CHECKPOINT_PATH))
+        print(f"Model downloaded successfully to: {CHECKPOINT_PATH}")
+    except Exception as e:
+        print(f"Warning: Could not download model from GCS: {e}")
+        if CHECKPOINT_PATH.exists():
+            print(f"Falling back to local path: {CHECKPOINT_PATH}")
+        else:
+            raise FileNotFoundError(
+                f"Model not found. Failed to download from GCS and no local file exists at {CHECKPOINT_PATH}"
+            ) from e
 
 
 def _ensure_loaded() -> None:
@@ -138,6 +236,9 @@ def _ensure_loaded() -> None:
 
     _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # Download model from GCS if not available locally
+    _download_model_from_gcs()
+
     _model = load_model(
         model_name=MODEL_NAME,
         checkpoint_path=CHECKPOINT_PATH,
@@ -146,7 +247,7 @@ def _ensure_loaded() -> None:
     )
     _model.eval()
 
-    _labels = _load_labels(LABELS_PATH)
+    _labels = _load_labels(CHECKPOINT_LABELS_PATH)
 
 
 @app.get("/health")
@@ -219,7 +320,13 @@ async def predict(
             ]
 
             now = datetime.now().isoformat()
-            background_tasks.add_task(add_to_database, now, file.filename, predicted, threshold, image_stats)
+            # For local prediction database storage
+            # background_tasks.add_task(
+            #     add_to_local_database, now, file.filename, predicted, top_items, threshold, image_stats
+            # )
+            background_tasks.add_task(
+                add_to_gcs_database, now, file.filename, predicted, top_items, threshold, image_stats
+            )
 
             return {
                 "filename": file.filename,
