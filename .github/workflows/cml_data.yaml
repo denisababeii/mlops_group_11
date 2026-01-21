@@ -38,6 +38,7 @@ jobs:
 
         # DVC with S3 support
         python -m pip install "dvc[s3]==3.18.0"
+        python -m pip install "pathspec==0.11.1"
 
         # ML packages
         python -m pip install torch==2.3.1 torchvision==0.18.1 typer==0.9.0
