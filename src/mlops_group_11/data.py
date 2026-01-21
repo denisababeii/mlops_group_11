@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 from typing import Optional, Tuple
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 import typer
@@ -14,7 +15,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, TensorDataset
 from torchvision import transforms
-import matplotlib.pyplot as plt
+
 
 class MyDataset(Dataset):
     """Raw movie poster dataset (multi-label classification).
@@ -443,7 +444,7 @@ def dataset_statistics(datadir: str = "data/processed") -> None:
     plt.ylabel("Count")
     plt.title("Train genre distribution")
     plt.tight_layout()
-    
+
     # Save genre distribution
     plt.savefig("train_genre_distribution.png")
     plt.close()
@@ -451,6 +452,7 @@ def dataset_statistics(datadir: str = "data/processed") -> None:
     # Average number of labels per image
     avg_labels = train_targets.sum(dim=1).float().mean()
     print(f"\nAverage genres per image (train): {avg_labels:.2f}")
+
 
 if __name__ == "__main__":
     typer.run(run_data_pipeline)
