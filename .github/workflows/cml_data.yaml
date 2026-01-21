@@ -25,11 +25,7 @@ jobs:
       uses: iterative/setup-dvc@v2
 
     - name: Install dependencies from uv.lock
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install uv
-        uv export -f requirements.txt --all-groups
-        python -m pip install -r requirements.txt
+      run: uv sync --locked
 
     - name: Pull data
       run: |
