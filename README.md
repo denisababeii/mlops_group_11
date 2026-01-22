@@ -75,7 +75,10 @@ The directory structure of the project looks like this:
 
 The API and frontend of the application are publicly available through Google Cloud Run:
 
+To interact with the app from the web:
 - **Frontend:** https://movie-poster-frontend-426073227638.europe-west1.run.app
+
+To make requests to the cloud API:
 - **API:** https://movie-poster-api-426073227638.europe-west1.run.app
 
 #### Using the Cloud API
