@@ -47,7 +47,7 @@ jobs:
 
     - name: Run dataset statistics & generate report
       run: |
-        python src/mlops_group_11/data.py > report.md
+        uv run python src/mlops_group_11/data.py > report.md
         echo '![](./distribution.png "Class distribution")' >> report.md
 
     - name: Setup CML
