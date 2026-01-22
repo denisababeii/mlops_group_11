@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from locust import HttpUser, task, between
+from locust import HttpUser, between, task
 
 SAMPLE_IMAGE = Path(os.getenv("LOCUST_IMAGE", "tests/performancetests/sample_avengers.png"))
 
