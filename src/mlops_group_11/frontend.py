@@ -3,36 +3,19 @@ import os
 import pandas as pd
 import requests
 import streamlit as st
-from dotenv import load_dotenv
-
-load_dotenv()
+from google.cloud import run_v2
 
 
-try:
-    from google.cloud import run_v2
-except Exception:
-    run_v2 = None
-
-
-def get_backend_url() -> str:
-    """
-    Prefer local/dev backend via BACKEND env var.
-    Otherwise try to discover Cloud Run service (if google-cloud-run is installed and auth is set up).
-    """
-    backend = os.environ.get("BACKEND")
-    if backend:
-        return backend.rstrip("/")
-
-    if run_v2 is None:
-        raise ValueError("BACKEND not set and google-cloud-run not available. Set BACKEND to use local API.")
-
-    parent = "projects/mlops_group_11/locations/europe-west1"
+@st.cache_resource
+def get_backend_url():
+    """Get the URL of the backend service."""
+    parent = "projects/mlops-group-11/locations/europe-west1"
     client = run_v2.ServicesClient()
-    for service in client.list_services(parent=parent):
-        if service.name.split("/")[-1] == "production-model":
-            return service.uri.rstrip("/")
-
-    raise ValueError("Backend service not found. Set BACKEND for local testing or deploy Cloud Run.")
+    services = client.list_services(parent=parent)
+    for service in services:
+        if service.name.split("/")[-1] == "movie-poster-api":
+            return service.uri
+    return os.environ.get("BACKEND", None)
 
 
 def predict_poster(image: bytes, backend: str, threshold: float = 0.5, topk: int = 5) -> dict | None:
@@ -41,7 +24,7 @@ def predict_poster(image: bytes, backend: str, threshold: float = 0.5, topk: int
     params = {"threshold": threshold, "topk": topk}
     files = {"file": image}
 
-    response = requests.post(predict_url, params=params, files=files, timeout=10)
+    response = requests.post(predict_url, params=params, files=files, timeout=60)
     if response.status_code == 200:
         return response.json()
 
