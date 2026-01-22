@@ -70,6 +70,7 @@ _labels: list[str] | None = None
 
 # LIFESPAN MANAGEMENT
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application startup and shutdown."""
@@ -86,7 +87,7 @@ async def lifespan(app: FastAPI):
 
     # Cleanup on shutdown
     print("Shutting down...")
-    
+
     if _model is not None:
         del _model
         _model = None
@@ -125,6 +126,7 @@ app.mount("/metrics", make_asgi_app())
 
 # HELPER FUNCTIONS
 
+
 def _compute_image_statistics(image: Image.Image) -> dict[str, float]:
     """Compute statistics on the input image (before preprocessing).
 
@@ -149,7 +151,7 @@ def _compute_image_statistics(image: Image.Image) -> dict[str, float]:
 
 def _download_from_gcs(gcs_path: str, local_path: Path) -> None:
     """Download file from GCS bucket to local cache.
-    
+
     Args:
         gcs_path: Path in GCS bucket
         local_path: Local path to save file
@@ -167,23 +169,21 @@ def _download_from_gcs(gcs_path: str, local_path: Path) -> None:
         local_path.parent.mkdir(parents=True, exist_ok=True)
         blob.download_to_filename(str(local_path))
         print(f"Downloaded to: {local_path}")
-        
+
     except Exception as e:
         print(f"Download failed: {e}")
         if local_path.exists():
             print(f"Falling back to cached file: {local_path}")
         else:
-            raise FileNotFoundError(
-                f"Could not download {gcs_path} and no local cache exists at {local_path}"
-            ) from e
+            raise FileNotFoundError(f"Could not download {gcs_path} and no local cache exists at {local_path}") from e
 
 
 def _load_labels(path: Path) -> list[str]:
     """Load genre labels from JSON file.
-    
+
     Args:
         path: Path to label_names.json
-        
+
     Returns:
         List of genre label names
     """
@@ -192,10 +192,10 @@ def _load_labels(path: Path) -> list[str]:
 
     if not path.exists():
         raise FileNotFoundError(f"Labels not found at: {path}")
-    
+
     with open(path, encoding="utf-8") as f:
         labels = json.load(f)
-    
+
     print(f"Loaded {len(labels)} genre labels")
     return labels
 
@@ -203,7 +203,7 @@ def _load_labels(path: Path) -> list[str]:
 def _load_model_from_checkpoint() -> None:
     """Load model from GCS checkpoint."""
     global _model, _device, _labels
-    
+
     if _model is not None and _labels is not None:
         return
 
@@ -237,7 +237,7 @@ def add_to_gcs_database(
     image_stats: dict[str, float],
 ) -> None:
     """Append prediction data as a CSV row to GCS.
-    
+
     Args:
         timestamp: ISO format timestamp
         filename: Original filename
@@ -249,10 +249,7 @@ def add_to_gcs_database(
         # Format data as CSV row
         genres_str = "|".join([f"{g['label']}:{g['probability']:.4f}" for g in predicted])
         stats_str = (
-            f"{image_stats['mean']:.4f},"
-            f"{image_stats['std']:.4f},"
-            f"{image_stats['min']:.4f},"
-            f"{image_stats['max']:.4f}"
+            f"{image_stats['mean']:.4f},{image_stats['std']:.4f},{image_stats['min']:.4f},{image_stats['max']:.4f}"
         )
 
         csv_line = f"{timestamp},{filename},{genres_str},{threshold},{stats_str}\n"
@@ -270,11 +267,13 @@ def add_to_gcs_database(
 
         blob.upload_from_string(existing + csv_line, content_type="text/csv")
         print(f"Prediction saved to gs://{GCS_BUCKET_NAME}/{GCS_PREDICTIONS_PATH}")
-        
+
     except Exception as e:
         print(f"Could not save prediction to GCS: {e}")
 
+
 # API ENDPOINTS
+
 
 @app.get("/")
 def root() -> dict[str, str]:
@@ -282,25 +281,20 @@ def root() -> dict[str, str]:
     return {
         "message": "Movie Poster Genre Prediction API",
         "version": "1.0.0",
-        "endpoints": {
-            "health": "/health",
-            "predict": "/predict",
-            "metrics": "/metrics",
-            "docs": "/docs"
-        }
+        "endpoints": {"health": "/health", "predict": "/predict", "metrics": "/metrics", "docs": "/docs"},
     }
 
 
 @app.get("/health")
 def health() -> dict[str, Any]:
     """Health check endpoint.
-    
+
     Returns:
         Health status and model information
     """
     try:
         _load_model_from_checkpoint()
-        
+
         return {
             "status": "healthy",
             "device": str(_device),
@@ -323,13 +317,13 @@ async def predict(
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> dict[str, Any]:
     """Predict genres for an uploaded movie poster.
-    
+
     Args:
         file: Uploaded image file
         threshold: Probability threshold for predictions (default: 0.5)
         topk: Number of top predictions to return (default: 5)
         background_tasks: FastAPI background tasks
-        
+
     Returns:
         Prediction results with genres above threshold and top-k predictions
     """
@@ -344,18 +338,14 @@ async def predict(
 
             if len(content) > MAX_FILE_SIZE:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"File size exceeds maximum of {MAX_FILE_SIZE // (1024 * 1024)}MB"
+                    status_code=400, detail=f"File size exceeds maximum of {MAX_FILE_SIZE // (1024 * 1024)}MB"
                 )
 
             # Load image
             try:
                 img = Image.open(io.BytesIO(content)).convert("RGB")
             except Exception as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid image file: {str(e)}"
-                ) from e
+                raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}") from e
 
             # Compute image statistics (before preprocessing)
             image_stats = _compute_image_statistics(img)
@@ -374,16 +364,9 @@ async def predict(
             topk = max(1, min(int(topk), len(probs_list)))
 
             # Get top-k predictions
-            top_indices = sorted(
-                range(len(probs_list)),
-                key=lambda i: probs_list[i],
-                reverse=True
-            )[:topk]
-            
-            top_items = [
-                {"label": _labels[i], "probability": float(probs_list[i])}
-                for i in top_indices
-            ]
+            top_indices = sorted(range(len(probs_list)), key=lambda i: probs_list[i], reverse=True)[:topk]
+
+            top_items = [{"label": _labels[i], "probability": float(probs_list[i])} for i in top_indices]
 
             # Get all predictions above threshold
             predicted = [
@@ -395,12 +378,7 @@ async def predict(
             # Save prediction to GCS (in background)
             timestamp = datetime.now().isoformat()
             background_tasks.add_task(
-                add_to_gcs_database,
-                timestamp,
-                file.filename or "unknown",
-                predicted,
-                threshold,
-                image_stats
+                add_to_gcs_database, timestamp, file.filename or "unknown", predicted, threshold, image_stats
             )
 
             # Increment success counter
@@ -421,16 +399,12 @@ async def predict(
             prediction_error_counter.inc()
             raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 # MAIN
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     port = int(os.getenv("PORT", "8080"))
-    
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=port,
-        log_level="info"
-    )
+
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
