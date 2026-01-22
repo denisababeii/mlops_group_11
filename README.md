@@ -71,9 +71,45 @@ The directory structure of the project looks like this:
 
 ## Running the Application
 
-### Option 1: Using Docker Compose
+### Cloud Deployment (Recommended)
 
-The easiest way to run both the backend API and frontend together:
+The API and frontend of the application are publicly available through Google Cloud Run:
+
+- **Frontend:** https://movie-poster-frontend-426073227638.europe-west1.run.app
+- **API:** https://movie-poster-api-426073227638.europe-west1.run.app
+
+#### Using the Cloud API
+
+You can interact with the deployed API directly using curl or any HTTP client:
+
+```bash
+# Make a prediction request (replace image_url with an actual movie poster URL)
+curl -X POST https://movie-poster-api-426073227638.europe-west1.run.app/predict \
+  -H "Content-Type: application/json" \
+  -d '{"image_url": "https://example.com/movie_poster.jpg"}'
+```
+
+Example using Python:
+
+```python
+import requests
+
+api_url = "https://movie-poster-api-426073227638.europe-west1.run.app"
+
+# Make a prediction
+response = requests.post(
+    f"{api_url}/predict",
+    json={"image_url": "https://example.com/movie_poster.jpg"}
+)
+
+print(response.json())
+```
+
+### Local Running
+
+#### Option 1: Using Docker Compose
+
+The easiest way to run both the backend API and frontend together locally:
 
 ```bash
 # Build and start both services
