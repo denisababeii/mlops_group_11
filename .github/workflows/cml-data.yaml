@@ -1,0 +1,63 @@
+name: DVC Data Workflow
+
+permissions:
+  pull-requests: write
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.dvc'
+      - '.dvc/**'
+
+jobs:
+  dataset_statistics:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        enable-cache: true
+
+    - name: Install UV
+      run: pip install uv
+
+    - name: Install dependencies
+      run: uv sync --locked
+
+    - name: Auth with GCP
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up gcloud
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Create destination directory
+      run: |
+        mkdir -p data/processed
+        ls -la data
+
+    - name: Pull data
+      run: |
+        gsutil -m rsync -r gs://mlops-group11-data/data/processed/ data/processed/
+
+    - name: Run dataset statistics & generate report
+      run: |
+        uv run python src/mlops_group_11/data.py > report.md
+        echo '![](./distribution.png "Class distribution")' >> report.md
+
+    - name: Setup CML
+      uses: iterative/setup-cml@v2
+
+    - name: Comment on PR
+      env:
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        cml comment create report.md --watermark-title="Data Checker"

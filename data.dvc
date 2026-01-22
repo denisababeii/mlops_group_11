@@ -1,3 +1,5 @@
+# test CML workflow trigger
+
 outs:
 - hash: md5
   path: data
