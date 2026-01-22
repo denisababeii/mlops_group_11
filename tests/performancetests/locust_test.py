@@ -22,6 +22,6 @@ class PosterAPIUser(HttpUser):
             return
 
         with SAMPLE_IMAGE.open("rb") as f:
-            files = {"file": ("sample.jpg", f, "image/jpeg")}
+            files = {"file": ("sample.png", f, "image/png")}
             # Use query params like real users
             self.client.post("/predict?threshold=0.5&topk=5", files=files)
