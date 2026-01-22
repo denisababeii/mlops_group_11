@@ -21,12 +21,11 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Install UV
+      run: pip install uv
+
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install uv
-        uv sync --locked
-        python -m pip list | grep matplotlib
+      run: uv sync --locked
 
     - name: Auth with GCP
       uses: google-github-actions/auth@v2
