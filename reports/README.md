@@ -464,7 +464,27 @@ Note: sometimes the Cloud Build would fail, so the Docker images were built loca
 >
 > Answer:
 
---- question 18 fill here ---
+We did not use the service of Google Compute Engine directly, but we did configure compute resources through Vertex AI Custom Jobs (model training). For the training (specially with the more demanding W&B hyperparameter sweeps), we specified some virtual machine configurations in Vertex AI config files (secret), looking like:
+```yaml
+workerPoolSpecs:
+  - machineSpec:
+      machineType: e2-standard-8  # 8 vCPUs, 32 GB RAM
+    replicaCount: 1
+```
+
+For the first time, we trained data this way, without distributing the work (single-node). Later we optimized the process through distributed data loading by configuring multiple worker pools:
+```yaml
+workerPoolSpecs:
+- machineSpec:
+machineType: e2-standard-8 # Chief node
+  replicaCount: 1 # Master worker (required)
+- machineSpec:
+machineType: e2-standard-8 # Worker nodes
+  replicaCount: 3 # 3 additional workers
+```
+
+This configuration created a distributed setup with 4 nodes, achieving faster training. Finally, we also tried distributed training, but our request for more GPUs was denied by Google.
+
 
 ### Question 19
 
@@ -473,7 +493,8 @@ Note: sometimes the Cloud Build would fail, so the Docker images were built loca
 >
 > Answer:
 
---- question 19 fill here ---
+![Pytorch initial profiling results](./figures/Google_Bucket_1.png)
+![Pytorch initial profiling results](./figures/Google_bucket_2.png)
 
 ### Question 20
 
@@ -482,7 +503,7 @@ Note: sometimes the Cloud Build would fail, so the Docker images were built loca
 >
 > Answer:
 
---- question 20 fill here ---
+![Pytorch initial profiling results](./figures/Google_artifact.png)
 
 ### Question 21
 
@@ -491,7 +512,7 @@ Note: sometimes the Cloud Build would fail, so the Docker images were built loca
 >
 > Answer:
 
---- question 21 fill here ---
+![Pytorch initial profiling results](./figures/Google_build.png)
 
 ### Question 22
 
@@ -692,4 +713,20 @@ Another challenge was converting our model to ONNX as initially the error was no
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
 
---- question 31 fill here ---
+Student s215811 was in charge of the local data management, creating functions to download, process and save our dataset. They also created the CML workflow for data changes and the initial readme project description. 
+
+
+Student s231439 was in charge of initial uv migration, data processing and training, logging of events in the code, documentation, and passing the functional local actions to the Cloud Services (data, training, deployment).
+
+
+Student s253528 was in charge of GitHub repository configurations, code typing, creating the initial Hydra configuration, creating Docker images, updating GitHub workflows, converting the model to ONNX, creating the BentoML API and adding Prometheus monitoring.
+
+
+Student s253509 was in charge of setting up the initial file structure using cookie cutter, adding an initial model and training procedure, profiling the training code, using Weights & Biases to log training progress and artifacts, running a hyperparameter optimization sweep, adding more pre-commit hooks, creating a frontend for the API, and adding a data drift detection.
+
+Student s242800 was responsible for implementing the FastAPI-based inference API, including the /health and /predict endpoints, image preprocessing and input validation for deployment. The student also contributed to unit testing across the data, model, and training modules, and performed load testing of the API using Locust to evaluate performance under concurrent users.
+
+All members were part of the brainstorming session for choosing the main idea of the project, the open-source libraries and the model architecture. Everyone has actively contributed to the repository to keep the files up to date. We have also written the report together, focusing on the parts we have worked on. 
+
+We have used ChatGPT, Claude AI and GitHub Copilot to help us debug and write some of our code. 
+
