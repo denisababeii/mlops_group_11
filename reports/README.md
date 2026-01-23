@@ -170,10 +170,13 @@ We used the *PyTorch Image Models (timm)* library to load a pretrained computer 
 
 We used uv together with pyproject.toml and a corresponding lock file to manage our project dependencies. All runtime and development dependencies are explicitly declared with fixed versions to ensure full reproducibility across machines and avoid version drift.
 In addition, the project is containerized using Docker. When building the Docker image, the container installs all dependencies from the lock file along with system-level packages and the specified Python version. The resulting Docker images are stored in Artifact Registry and were used to train our model on Vertex AI, ensuring that the cloud training environment matches the development environment.
-Anyone can reproduce the exact environment by cloning the repository and either installing dependencies locally via uv or building and running the Docker image. To recreate the development environment locally, the following commands can be run (after installing uv following the official guide (https://docs.astral.sh/uv/getting-started/installation/)):
+Anyone can reproduce the exact environment by cloning the repository and either installing dependencies locally via uv or building and running the Docker image. To recreate the development environment locally, the following commands can be run (after installing uv following the official guide [here](https://docs.astral.sh/uv/getting-started/installation/)):
+
+```bash
 uv venv --python 3.13
 source .venv/bin/activate
 uv sync
+```
 
 ### Question 5
 
@@ -298,13 +301,13 @@ We have organized our continuous integration into 5 separate workflow files:
 
 1. Unit Testing (`tests.yaml`): This workflow runs our test suite using pytest with coverage reporting. It tests across multiple operating systems (Ubuntu, Windows, macOS) and Python versions (3.11, 3.12) to ensure cross-platform compatibility. We use a matrix strategy with fail-fast: false to see all failures across environments. The workflow integrates with Codecov to track test coverage over time. We leverage setup-python's built-in caching (enable-cache: true) to speed up dependency installation.
 
-2. Code Linting (`linting.yaml`): This runs Ruff for both code quality checks (`ruff check`) and formatting verification (``ruff format --check). We run this only on Ubuntu with Python 3.12 since linting results are consistent across platforms. This also uses Python caching to improve performance.
+2. Code Linting (`linting.yaml`): This runs Ruff for both code quality checks (`ruff check`) and formatting verification (`ruff format --check`). We run this only on Ubuntu with Python 3.12 since linting results are consistent across platforms. This also uses Python caching to improve performance.
 
 3. Pre-commit Auto-update (`pre-commit-update.yaml`): This scheduled workflow runs daily to automatically update pre-commit hooks and creates pull requests with the updates, helping keep our development tools current.
 
 4. Docker Building (`docker-building.yaml`): Currently commented out as we've migrated to Google Cloud Build triggers for container image CI/CD.
 
-5. DVC Data: This workflow is triggered by pull requests that include changes to the dataset. It automatically analyzes the updated data and posts comments on the pull request with statistics about the current data structure, providing transparency into the changes.
+5. DVC Data (`cml-data.yaml`): This workflow is triggered by pull requests that include changes to the dataset. It automatically analyzes the updated data and posts comments on the pull request with statistics about the current data structure, providing transparency into the changes.
 
 All workflows use UV for fast, reliable dependency management with locked dependencies (`uv sync --locked`), ensuring reproducible builds. An example workflow run can be seen in the Actions tab of our repository.
 
@@ -659,8 +662,37 @@ uvicorn mlops_group_11.api.fast_api:app --reload
 ```
 
 Once the API is running, the monitoring results can be found by navigating to the /metrics endpoint (http://localhost:8000/metrics/).
+
 Example metrics output:
-![Example of optimization metrics](./figures/Optimization_metrics.png)
+```bash
+# HELP prediction_error Number of prediction errors
+# TYPE prediction_error counter
+prediction_error 0.0
+
+# HELP health_error Number of health errors
+# TYPE health_error counter
+health_error 0.0
+
+# HELP prediction_latency_seconds Prediction latency in seconds
+# TYPE prediction_latency_seconds histogram
+prediction_latency_seconds_bucket{le="0.005"} 0.0
+prediction_latency_seconds_bucket{le="0.01"} 0.0
+prediction_latency_seconds_bucket{le="0.025"} 2.0
+prediction_latency_seconds_bucket{le="0.05"} 5.0
+prediction_latency_seconds_bucket{le="0.075"} 8.0
+prediction_latency_seconds_bucket{le="0.1"} 10.0
+prediction_latency_seconds_bucket{le="0.25"} 15.0
+prediction_latency_seconds_bucket{le="0.5"} 20.0
+prediction_latency_seconds_bucket{le="0.75"} 20.0
+prediction_latency_seconds_bucket{le="1.0"} 20.0
+prediction_latency_seconds_bucket{le="2.5"} 20.0
+prediction_latency_seconds_bucket{le="5.0"} 20.0
+prediction_latency_seconds_bucket{le="7.5"} 20.0
+prediction_latency_seconds_bucket{le="10.0"} 20.0
+prediction_latency_seconds_bucket{le="+Inf"} 20.0
+prediction_latency_seconds_count 20.0
+prediction_latency_seconds_sum 4.523
+```
 
 
 ## Overall discussion of project
@@ -762,7 +794,7 @@ Another challenge was converting our model to ONNX as initially the error was no
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
 
-Student s215811 was in charge of the local data management, creating functions to download, process and save our dataset. They also created the CML workflow for data changes and the initial readme project description. 
+Student s215811 was in charge of the local data management, creating functions to download, process and save our dataset. They also created the CML workflow for data changes, the initial readme project description and made the figure showing our overall project architecture and used services. 
 
 Student s231439 was in charge of initial uv migration, data processing and training, logging of events in the code, documentation, and passing the functional local actions to the Cloud Services (data, training, deployment).
 
