@@ -9,8 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.data.distributed import DistributedSampler
 import wandb
 from dotenv import load_dotenv
 from google.cloud import storage
@@ -23,8 +21,10 @@ from sklearn.metrics import (
     recall_score,
 )
 from torch import nn, optim
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.profiler import ProfilerActivity, profile, tensorboard_trace_handler
 from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 from torchvision.utils import make_grid
 
 from mlops_group_11.data import poster_dataset
