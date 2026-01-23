@@ -305,7 +305,7 @@ We have organized our continuous integration into 5 separate workflow files:
 
 3. Pre-commit Auto-update (`pre-commit-update.yaml`): This scheduled workflow runs daily to automatically update pre-commit hooks and creates pull requests with the updates, helping keep our development tools current.
 
-4. Docker Building (`docker-building.yaml`): Currently commented out as we've migrated to Google Cloud Build triggers for container image CI/CD.
+4. Docker Building (`docker-building.yaml`): This workflow was used to build and push Docker images using Docker Hub.
 
 5. DVC Data (`cml-data.yaml`): This workflow is triggered by pull requests that include changes to the dataset. It automatically analyzes the updated data and posts comments on the pull request with statistics about the current data structure, providing transparency into the changes.
 
