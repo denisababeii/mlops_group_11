@@ -45,6 +45,7 @@ dependencies = [
     "prometheus-client>=0.24.1",
     "evidently>=0.7.20",
     "datetime>=6.0",
+    "locust>=2.43.1",
 ]
 
 [dependency-groups]
