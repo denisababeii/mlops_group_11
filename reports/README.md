@@ -63,7 +63,7 @@ will check the repositories and the code to verify your answers.
 * [x] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
 * [x] Do a bit of code typing and remember to document essential parts of your code (M7)
 * [x] Setup version control for your data or part of your data (M8)
-* [ ] Add command line interfaces and project commands to your code where it makes sense (M9)
+* [x] Add command line interfaces and project commands to your code where it makes sense (M9)
 * [x] Construct one or multiple docker files for your code (M10)
 * [x] Build the docker files locally and make sure they work as intended (M10)
 * [x] Write one or multiple configurations files for your experiments (M11)
@@ -91,7 +91,7 @@ will check the repositories and the code to verify your answers.
 * [x] Create a FastAPI application that can do inference using your model (M22)
 * [x] Deploy your model in GCP using either Functions or Run as the backend (M23)
 * [x] Write API tests for your application and setup continues integration for these (M24)
-* [ ] Load test your application (M24)
+* [x] Load test your application (M24)
 * [x] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)
 * [x] Create a frontend for your API (M26)
 
@@ -103,16 +103,16 @@ will check the repositories and the code to verify your answers.
 * [x] Instrument your API with a couple of system metrics (M28)
 * [ ] Setup cloud monitoring of your instrumented application (M28)
 * [ ] Create one or more alert systems in GCP to alert you if your app is not behaving correctly (M28)
-* [ ] If applicable, optimize the performance of your data loading using distributed data loading (M29)
+* [x] If applicable, optimize the performance of your data loading using distributed data loading (M29)
 * [ ] If applicable, optimize the performance of your training pipeline by using distributed training (M30)
 * [ ] Play around with quantization, compilation and pruning for you trained models to increase inference speed (M31)
 
 ### Extra
 
-* [x] Write some documentation for your application (M32)
+* [ ] Write some documentation for your application (M32)
 * [ ] Publish the documentation to GitHub Pages (M32)
 * [x] Revisit your initial project description. Did the project turn out as you wanted?
-* [ ] Create an architectural diagram over your MLOps pipeline
+* [x] Create an architectural diagram over your MLOps pipeline
 * [x] Make sure all group members have an understanding about all parts of the project
 * [x] Uploaded all your code to GitHub
 
@@ -184,7 +184,11 @@ We used the *PyTorch Image Models (timm)* library to load a pretrained computer 
 >
 > Answer:
 
---- question 5 fill here ---
+Our project was based on the cookiecutter template without the AI agents option, and we have slightly adapted it.
+
+A deviation from the template we have performed is adding a scripts folder with various scripts we have used to generate the ONNX model, create the hyperparameter sweep and download data from GCS. We have also added an api folder which includes the files for both the FastAPI and the BentoML API. We also removed requirements.txt and requirements-dev.txt and instead we managed the dependencies for the uv environment in pyproject.toml.
+
+The tree structure of the project can be found [here](../README.md#project-structure).
 
 ### Question 6
 
@@ -233,7 +237,7 @@ In total, we implemented three-unit test modules, covering the data pipeline, mo
 >
 > Answer:
 
---- question 8 fill here ---
+The total code coverage of code is 42%, including tests for the data, training and evaluation procedures, the model, and the API. We are far from 100% coverage of our code, particularly in the main training and inference loops which would require complex mocking of full training workflows (e.g. W&B logging, GCS storage). Even if our code coverage were close to or at 100%, we would not consider the software to be completely error free. Code coverage only measures which lines of code are executed during testing, not whether the tests effectively validate correct behavior. For example, edge cases may not be fully explored, integration between components may fail even if individual components are well-tested, and tests can have bugs themselves.
 
 ### Question 9
 
@@ -381,7 +385,20 @@ To reproduce an experiment, one would have to use the saved Hydra config, pull t
 >
 > Answer:
 
---- question 15 fill here ---
+We used docker to containerize different processes of our pipeline, ensuring the reproducibility and portability across different environments. We developed images for both the development and deployment phases. In the case of the development they were made for the local train, Vertex AI train, and evaluation. On the other hand, for the deployment, they were made for the api deployment, frontend, and drift monitoring.
+
+One example of docker image was the [train_vertex.dockerfile](../dockerfiles/train_vertex.dockerfile) which supports both regular training runs and W&B hyperparameter sweeps. Both can be run with:
+
+```bash
+# Run regular training
+docker run --name vertex-train train-vertex:latest
+
+# Run as W&B sweep agent
+docker run -e WANDB_SWEEP_ID=<sweep_id> train-vertex:latest
+```
+
+Where WANDB_SWEEP_ID is the sweep ID generated by W&B.
+
 
 ### Question 16
 
@@ -396,7 +413,13 @@ To reproduce an experiment, one would have to use the saved Hydra config, pull t
 >
 > Answer:
 
---- question 16 fill here ---
+Debugging method was dependent on each group member, and in general we all had configured the built-in python debugger in VScode for breakpoints and step through. We also used logs from `wandb`, local training or API to guide us on where to find the bugs. We tried profiling our training code using both `cProfile` (together with `snakeviz`) and PyTorch profiling integrated with TensorBoard via the trace handler. For the PyTorch profiling, we configured the profiling to run only for a reduced number of batches and epochs specified in the profiling section in `config.yaml` file, to keep the profiling overhead manageable. The profiling results were stored in a non-git tracked outputs folder.
+
+In this image, we show initial PyTorch profiling results in TensorBoard for one epoch and ten batches:
+
+![Pytorch initial profiling results](./figures/pytorch_profiling.png)
+
+Profiling was mostly useful to discard dataloader issues or bottlenecks, but we did not get any performance recommendations that we could apply. Although the code is not “perfect”, we considered the current performance to be acceptable for our scope.
 
 ## Working in the cloud
 
@@ -519,7 +542,38 @@ The API works with the ONNX converted model for faster inference. The @bentoml.s
 >
 > Answer:
 
---- question 24 fill here ---
+We successfully deployed our API both locally and in the cloud.
+
+**Local Deployment:**
+
+We tested our API locally in two ways. First, using Docker directly:
+
+```
+docker build -f dockerfiles/api.dockerfile -t poster-classifier:latest .
+docker run -p 8000:8000 poster-classifier:latest serve --production
+```
+
+We also used docker-compose for a complete local deployment setup with the API and frontend integrated:
+
+```
+docker-compose up
+```
+
+The API can then be invoked locally by sending image data to the endpoint:
+
+```
+curl -X POST -F "file=@image.jpg" http://localhost:8000/predict
+```
+
+**Cloud Deployment:**
+
+After verifying local functionality, we deployed the API image to Google Cloud Run using the `gcloud` CLI. The deployment can be invoked using the Cloud Run service URL:
+
+```
+curl -X POST -F "file=@image.jpg" https://movie-poster-api-426073227638.europe-west1.run.app/predict
+```
+
+We also deployed a Streamlit frontend and a drift monitoring service to Cloud Run. The frontend provides a user-friendly interface for making predictions, while the drift monitoring system continuously tracks data drift and logs metrics to Cloud Run dashboard.
 
 ### Question 25
 
