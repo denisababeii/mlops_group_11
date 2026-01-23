@@ -51,14 +51,14 @@ def set_seed(seed=42):
 
 def setup_distributed():
     """Initialize distributed training environment.
-    
+
     Supports both CPU (gloo) and GPU (nccl) backends.
     """
     # Get distributed training parameters from environment
     rank = int(os.environ.get("RANK", 0))
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
-    
+
     # Initialize process group if distributed
     if world_size > 1:
         # Auto-detect backend based on GPU availability
@@ -67,13 +67,13 @@ def setup_distributed():
             torch.cuda.set_device(local_rank)
         else:
             backend = "gloo"  # CPU backend
-        
+
         dist.init_process_group(
             backend=backend,
             init_method="env://",
         )
         logger.info(f"Initialized DDP with {backend} backend: rank {rank}/{world_size}, local_rank {local_rank}")
-    
+
     return rank, local_rank, world_size
 
 
@@ -102,7 +102,7 @@ def train(cfg: DictConfig) -> None:
     # Distributed training
     rank, local_rank, world_size = setup_distributed()
     is_main_process = rank == 0  # Rank 0 does logging/saving
-    
+
     # Set seed for reproducibility (different seed per rank for data augmentation diversity)
     set_seed(cfg.get("seed", 42) + rank)
 
@@ -147,7 +147,7 @@ def train(cfg: DictConfig) -> None:
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    
+
     logger.info(f"Rank {rank} using device: {device}")
 
     # Create model
@@ -164,7 +164,7 @@ def train(cfg: DictConfig) -> None:
         if torch.cuda.is_available():
             model = DDP(model, device_ids=[local_rank], output_device=local_rank)
         else:
-            model = DDP(model)  
+            model = DDP(model)
         logger.info(f"Wrapped model with DDP on rank {rank}")
 
     # Load data
@@ -181,18 +181,9 @@ def train(cfg: DictConfig) -> None:
     # Create distributed samplers
     if world_size > 1:
         train_sampler = DistributedSampler(
-            train_dataset,
-            num_replicas=world_size,
-            rank=rank,
-            shuffle=True,
-            seed=cfg.get("seed", 42)
+            train_dataset, num_replicas=world_size, rank=rank, shuffle=True, seed=cfg.get("seed", 42)
         )
-        val_sampler = DistributedSampler(
-            val_dataset,
-            num_replicas=world_size,
-            rank=rank,
-            shuffle=False
-        )
+        val_sampler = DistributedSampler(val_dataset, num_replicas=world_size, rank=rank, shuffle=False)
     else:
         train_sampler = None
         val_sampler = None
@@ -285,7 +276,7 @@ def train(cfg: DictConfig) -> None:
                 preds = (probs > cfg.hyperparameters.prob_threshold).float()
 
                 batch_accuracy = (preds == labels).float().mean().item()
-                
+
                 # Log only from main process
                 if is_main_process:
                     global_step = epoch * len(train_loader) + batch_idx
@@ -323,12 +314,12 @@ def train(cfg: DictConfig) -> None:
                 train_loss_tensor = torch.tensor([epoch_train_loss], device=device)
                 train_correct_tensor = torch.tensor([epoch_train_correct], device=device)
                 n_train_tensor = torch.tensor([n_train], device=device)
-                
+
                 # Sum across all processes
                 dist.all_reduce(train_loss_tensor, op=dist.ReduceOp.SUM)
                 dist.all_reduce(train_correct_tensor, op=dist.ReduceOp.SUM)
                 dist.all_reduce(n_train_tensor, op=dist.ReduceOp.SUM)
-                
+
                 epoch_train_loss = train_loss_tensor.item()
                 epoch_train_correct = train_correct_tensor.item()
                 n_train = n_train_tensor.item()
@@ -364,11 +355,11 @@ def train(cfg: DictConfig) -> None:
             val_loss_tensor = torch.tensor([epoch_val_loss], device=device)
             val_correct_tensor = torch.tensor([epoch_val_correct], device=device)
             n_val_tensor = torch.tensor([n_val], device=device)
-            
+
             dist.all_reduce(val_loss_tensor, op=dist.ReduceOp.SUM)
             dist.all_reduce(val_correct_tensor, op=dist.ReduceOp.SUM)
             dist.all_reduce(n_val_tensor, op=dist.ReduceOp.SUM)
-            
+
             epoch_val_loss = val_loss_tensor.item()
             epoch_val_correct = val_correct_tensor.item()
             n_val = n_val_tensor.item()
