@@ -510,8 +510,8 @@ This configuration created a distributed setup with 4 nodes, achieving faster tr
 >
 > Answer:
 
-![Pytorch initial profiling results](./figures/Google_Bucket_1.png)
-![Pytorch initial profiling results](./figures/Google_bucket_2.png)
+![Google Bucket 1](./figures/Google_Bucket_1.png)
+![Google Bucket 2](./figures/Google_bucket_2.png)
 
 ### Question 20
 
@@ -520,7 +520,7 @@ This configuration created a distributed setup with 4 nodes, achieving faster tr
 >
 > Answer:
 
-![Pytorch initial profiling results](./figures/Google_artifact.png)
+![Google Artifact](./figures/Google_artifact.png)
 
 ### Question 21
 
@@ -529,7 +529,7 @@ This configuration created a distributed setup with 4 nodes, achieving faster tr
 >
 > Answer:
 
-![Pytorch initial profiling results](./figures/Google_build.png)
+![Google Build](./figures/Google_build.png)
 
 ### Question 22
 
@@ -730,6 +730,9 @@ The total credits used by the team were $14.27. The service costing the most was
 
 We implemented a frontend for our API using Streamlit and deployed it to Cloud Run and connected to the backend API through discovery of service URL using Google Cloud Run v2 API. This allows users to interact with our model in an easy and visual way; they can upload movie poster images and get real-time genre predictions with adjustable probability thresholds and top-K filtering. The frontend and backend communicate via REST API calls, with the entire system publicly accessible through Cloud Run URLs.
 We also implemented data drift detection using Evidently AI, which monitors distribution shifts in image statistics (mean, std, min, max) and predicted genre distributions between the training reference data and new production predictions. The prediction database in CSV format is stored in the Cloud Storage bucket and drift reports are generated as HTML.
+
+![Data drifting](./figures/DataDrift.png)
+![Data drifting2](./figures/DataDrift2.png)
 
 ### Question 29
 
