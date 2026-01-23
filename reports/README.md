@@ -807,5 +807,4 @@ Student s242800 was responsible for implementing the FastAPI-based inference API
 All members were part of the brainstorming session for choosing the main idea of the project, the open-source libraries and the model architecture. Everyone has actively contributed to the repository to keep the files up to date. We have also written the report together, focusing on the parts we have worked on. 
 
 We have used ChatGPT, Claude AI and GitHub Copilot to help us debug and write some of our code. 
-
-
+ChatGPT has also been used for part of the report answers. 
