@@ -1,6 +1,8 @@
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+import numpy as np
+import torch
 from omegaconf import OmegaConf
 
 import mlops_group_11.train as train_module
@@ -50,3 +52,38 @@ def test_train_returns_gracefully_when_data_missing(monkeypatch, tmp_path: Path)
     # Expectation: it should NOT raise. It should return early.
     result = train_module.train.__wrapped__(cfg)
     assert result is None, "Expected train() to return None when data is missing (graceful exit)."
+
+
+def test_set_seed_reproducibility() -> None:
+    """
+    Test that set_seed() produces reproducible random values.
+    """
+    # Set seed and generate random tensors
+    train_module.set_seed(42)
+    random_tensor_1 = torch.randn(3, 3)
+    random_array_1 = np.random.randn(3, 3)
+
+    # Set seed again and generate new random tensors
+    train_module.set_seed(42)
+    random_tensor_2 = torch.randn(3, 3)
+    random_array_2 = np.random.randn(3, 3)
+
+    # Verify reproducibility: same seed should produce same random values
+    assert torch.allclose(random_tensor_1, random_tensor_2), "PyTorch random seed not reproducible"
+    assert np.allclose(random_array_1, random_array_2), "NumPy random seed not reproducible"
+
+
+def test_upload_to_gcs_handles_exception() -> None:
+    """
+    Test that upload_to_gcs handles GCS upload failures gracefully.
+
+    """
+    with patch("mlops_group_11.train.storage.Client") as mock_storage:
+        # Make the client raise an exception
+        mock_storage.side_effect = Exception("GCS connection failed")
+
+        # Call upload_to_gcs; it should NOT raise, but log a warning instead
+        result = train_module.upload_to_gcs(local_path="/fake/path/model.pth", gcs_path="models/test_model.pth")
+
+        # Should return None and not raise
+        assert result is None

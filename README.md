@@ -29,44 +29,83 @@ The directory structure of the project looks like this:
 ├── .github/                  # Github actions and dependabot
 │   ├── dependabot.yaml
 │   └── workflows/
+│       ├── cml-data.yaml
+│       ├── docker-building.yaml
+│       ├── linting.yaml
+│       ├── pre-commit-update.yaml
 │       └── tests.yaml
 ├── configs/                  # Configuration files
-├── data/                     # Data directory
+│   ├── cloudbuild.yaml
+│   ├── config.yaml
+│   └── sweep.yaml
+├── data/                     # Data directory (not git tracked)
 │   ├── processed
 │   └── raw
+├── deployment/               # Deployment directory (adapted to use GCP)
+│   └── api/
+│       ├── mlops_group_11/
+│       │   ├── __init__.py
+│       │   ├── data_drift.py
+│       │   └── frontend.py
+│       ├── api.dockerfile
+│       ├── drift.dockerfile
+│       ├── frontend.dockerfile
+│       └── main.py
 ├── dockerfiles/              # Dockerfiles
-│   ├── api.Dockerfile
-│   └── train.Dockerfile
+│   ├── api.dockerfile
+│   ├── evaluate.dockerfile
+│   ├── frontend.dockerfile
+│   ├── train_vertex.dockerfile
+│   └── train.dockerfile
 ├── docs/                     # Documentation
 │   ├── mkdocs.yml
 │   └── source/
 │       └── index.md
 ├── models/                   # Trained models
+│   ├── model.onnx
+│   └── model.pth
 ├── notebooks/                # Jupyter notebooks
+│   └── inspect_data.ipynb
 ├── reports/                  # Reports
-│   └── figures/
+│   ├── figures/
+│   └── README.md
 ├── src/                      # Source code
-│   ├── project_name/
+│   ├── mlops_group_11/
+│   │   ├── api/
+│   │   │   ├── bentoML/
+│   │   │   │   ├── client.py
+│   │   │   │   └── service.py
+│   │   │   └── fast_api.py
 │   │   ├── __init__.py
-│   │   ├── api.py
+│   │   ├── adaptive_avg_pool_2d_custom.py
+│   │   ├── data_drift.py
 │   │   ├── data.py
 │   │   ├── evaluate.py
-│   │   ├── models.py
+│   │   ├── frontend.py
+│   │   ├── model.py
 │   │   ├── train.py
 │   │   └── visualize.py
 └── tests/                    # Tests
 │   ├── __init__.py
 │   ├── test_api.py
 │   ├── test_data.py
-│   └── test_model.py
+│   ├── test_model.py
+│   └── test_training.py
+├── .dockerignore
+├── .dvcignore
+├── .gcloudignore
 ├── .gitignore
 ├── .pre-commit-config.yaml
+├── cloudbuild.yaml
+├── data.dvc
+├── DATA.md                   # Data setup documentation
+├── docker-compose.yaml
 ├── LICENSE
 ├── pyproject.toml            # Python project file
 ├── README.md                 # Project README
-├── requirements.txt          # Project requirements
-├── requirements_dev.txt      # Development requirements
-└── tasks.py                  # Project tasks
+├── tasks.py
+├── uv.lock
+└── WANDB_SWEEP_GUIDE.md      # W&B documentation
 ```
 
 ## Running the Application
