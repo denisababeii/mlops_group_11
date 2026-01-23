@@ -101,7 +101,7 @@ def train(cfg: DictConfig) -> None:
 
     # Distributed training
     rank, local_rank, world_size = setup_distributed()
-    is_main_process = rank == 0  # Only rank 0 does logging/saving
+    is_main_process = rank == 0  # Rank 0 does logging/saving
     
     # Set seed for reproducibility (different seed per rank for data augmentation diversity)
     set_seed(cfg.get("seed", 42) + rank)
@@ -164,7 +164,7 @@ def train(cfg: DictConfig) -> None:
         if torch.cuda.is_available():
             model = DDP(model, device_ids=[local_rank], output_device=local_rank)
         else:
-            model = DDP(model)  # CPU - no device_ids
+            model = DDP(model)  
         logger.info(f"Wrapped model with DDP on rank {rank}")
 
     # Load data
