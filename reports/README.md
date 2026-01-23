@@ -168,7 +168,12 @@ We used the *PyTorch Image Models (timm)* library to load a pretrained computer 
 >
 > Answer:
 
---- question 4 fill here ---
+We used uv together with pyproject.toml and a corresponding lock file to manage our project dependencies. All runtime and development dependencies are explicitly declared with fixed versions to ensure full reproducibility across machines and avoid version drift.
+In addition, the project is containerized using Docker. When building the Docker image, the container installs all dependencies from the lock file along with system-level packages and the specified Python version. The resulting Docker images are stored in Artifact Registry and were used to train our model on Vertex AI, ensuring that the cloud training environment matches the development environment.
+Anyone can reproduce the exact environment by cloning the repository and either installing dependencies locally via uv or building and running the Docker image. To recreate the development environment locally, the following commands can be run (after installing uv following the official guide (https://docs.astral.sh/uv/getting-started/installation/)):
+uv venv --python 3.13
+source .venv/bin/activate
+uv sync
 
 ### Question 5
 
@@ -289,7 +294,7 @@ Even though we only had a single version of data, we implemented DVC as a good p
 >
 > Answer:
 
-We have organized our continuous integration into 3 separate workflow files:
+We have organized our continuous integration into 5 separate workflow files:
 
 1. Unit Testing (`tests.yaml`): This workflow runs our test suite using pytest with coverage reporting. It tests across multiple operating systems (Ubuntu, Windows, macOS) and Python versions (3.11, 3.12) to ensure cross-platform compatibility. We use a matrix strategy with fail-fast: false to see all failures across environments. The workflow integrates with Codecov to track test coverage over time. We leverage setup-python's built-in caching (enable-cache: true) to speed up dependency installation.
 
@@ -298,6 +303,8 @@ We have organized our continuous integration into 3 separate workflow files:
 3. Pre-commit Auto-update (`pre-commit-update.yaml`): This scheduled workflow runs daily to automatically update pre-commit hooks and creates pull requests with the updates, helping keep our development tools current.
 
 4. Docker Building (`docker-building.yaml`): Currently commented out as we've migrated to Google Cloud Build triggers for container image CI/CD.
+
+5. DVC Data: This workflow is triggered by pull requests that include changes to the dataset. It automatically analyzes the updated data and posts comments on the pull request with statistics about the current data structure, providing transparency into the changes.
 
 All workflows use UV for fast, reliable dependency management with locked dependencies (`uv sync --locked`), ensuring reproducible builds. An example workflow run can be seen in the Actions tab of our repository.
 
@@ -370,7 +377,14 @@ To reproduce an experiment, one would have to use the saved Hydra config, pull t
 >
 > Answer:
 
---- question 14 fill here ---
+For the experiments in W&B, we tracked loss and accuracy for both training and validation datasets in the training loop. We also logged batch-level metrics, training batch images, and gradient histograms every 10 batches to monitor data quality and training dynamics. At the end of training, we logged ROC curves for multi-label classification and saved the final trained model as a W&B artifact together with metrics (accuracy, precision, recall, and F1). These metrics helped us understand model performance across different configurations and identify potential training issues. For hyperparameter sweeps, W&B aggregated results across runs, allowing us to identify the best hyperparameter configuration.
+
+
+However, validation loss and accuracy curves were only logged as images (media), instead of using the default wandb.log() which provides interactive curves like the training logs. This could have been an area of improvement, as logging validation metrics the same way as training metrics would have allowed for better visual inspection directly in the W&B dashboard. The validation results were still available in the media tab and as part of the final saved artifact, but interactive comparison would have been more convenient.
+
+![Training and validation log curves](./figures/Q14_figure_1.png)
+![ROC curves](./figures/Q14_figure_2.png)
+![Loss and accuracy curve](./figures/Q14_figure_3.png)
 
 ### Question 15
 
@@ -544,8 +558,9 @@ Yes. We initially trained the model locally (a single model, 10 epochs), but the
 >
 > Answer:
 
-We also implemented a BentoML-based alternative API for our movie poster genre classification model.
+We implemented an API for our trained model using FastAPI. The API provides a /health and /predict endpoints. The API uses the same image preprocessing steps during prediction as were used during training, such as resizing the image and applying normalization. This ensures that the model receives input in a format it understands and can produce reliable results. The model and label files are loaded only when they are first needed and then kept locally, which improves startup time and makes the service more efficient in a cloud environment. The API also includes basic input validation, such as checking file size and verifying that the uploaded file is a valid image, to prevent errors and ensure stable operation.
 
+We also implemented a BentoML-based alternative API for our movie poster genre classification model. 
 The API works with the ONNX converted model for faster inference. The @bentoml.service decorator configures the service with 4 concurrent workers, enabling parallel request processing. Configuration management is centralized through Hydra, loading hyperparameters (model architecture, normalization statistics, classification thresholds) from our config file.
 
 
@@ -609,7 +624,9 @@ We also deployed a Streamlit frontend and a drift monitoring service to Cloud Ru
 >
 > Answer:
 
---- question 25 fill here ---
+Yes, we performed both unit testing and load testing of our API. For unit testing we used pytest together with FastAPI’s TestClient. We wrote tests for /health and /predict, and we mocked the model/device/labels so the tests run fast and do not depend on downloading real model files test_api. The /predict test uploads a small in-memory image and checks that the response contains the expected fields (predicted, topk) and returns the correct number of top-k predictions.
+
+For load testing, we used Locust to simulate concurrent users sending requests to the API. The test included both the /health and /predict endpoints, with health checks occurring more frequently to reflect realistic usage patterns. We tested the service with 200 concurrent users, a spawn rate of 5 users per second, and a runtime of 2 minutes. At this load level, the service began to show its first failures, with approximately 1.15% failed health requests and 4.24% failed prediction requests after around 860 aggregated requests. Prediction latency increased significantly under load, reaching over 60 seconds for some requests. This shows that while the API remains stable under moderate load, model inference becomes the main performance bottleneck at higher concurrency levels. Additional tests with higher user counts and spawn rates confirmed this behavior, with failures consistently appearing once the request volume exceeded approximately 700 requests.
 
 ### Question 26
 
@@ -624,7 +641,27 @@ We also deployed a Streamlit frontend and a drift monitoring service to Cloud Ru
 >
 > Answer:
 
---- question 26 fill here ---
+The Fast API includes monitoring using Prometheus to track errors and performance metrics.
+
+The following metrics are tracked with Prometheus: 
+1. Error Counters
+prediction_error: Tracks the total number of errors that occur during prediction requests. Increments when exceptions are raised in the /predict endpoint Useful for monitoring prediction service reliability.
+health_error: Tracks the total number of errors on the health check endpoint. Increments when the /health endpoint fails. Useful for monitoring overall service availability.
+
+2. Performance Metrics
+prediction_latency_seconds: Histogram tracking the latency of prediction requests. Measures the complete duration of each /predict request. Helps identify performance degradation and bottlenecks.
+In order to view the metrics, the Fast API has to be started.
+
+```bash
+# From within the src directory
+cd src
+uvicorn mlops_group_11.api.fast_api:app --reload
+```
+
+Once the API is running, the monitoring results can be found by navigating to the /metrics endpoint (http://localhost:8000/metrics/).
+Example metrics output:
+![Example of optimization metrics](./figures/Optimization_metrics.png)
+
 
 ## Overall discussion of project
 
@@ -643,7 +680,7 @@ We also deployed a Streamlit frontend and a drift monitoring service to Cloud Ru
 >
 > Answer:
 
---- question 27 fill here ---
+The total credits used by the team were $14.27. The service costing the most was Vertex AI, being used for the training. The specific action that took most of the credits was the W&B hyperparameter sweep in that service, taking more than $10 for a single run due to the great amount of processes it had and the amount of data it worked on. Our work methodology was to first implement the things locally, and then pass them to the cloud. That allowed us to see the special benefits it has. Working with it was challenging at the beginning (permissions / authorizations were confusing), but once everything was set, working with it became very effective and time saving. One of the main benefits we saw was the connection between the different Google Cloud Services, making the processes easier and faster.
 
 ### Question 28
 
@@ -659,7 +696,8 @@ We also deployed a Streamlit frontend and a drift monitoring service to Cloud Ru
 >
 > Answer:
 
---- question 28 fill here ---
+We implemented a frontend for our API using Streamlit and deployed it to Cloud Run and connected to the backend API through discovery of service URL using Google Cloud Run v2 API. This allows users to interact with our model in an easy and visual way; they can upload movie poster images and get real-time genre predictions with adjustable probability thresholds and top-K filtering. The frontend and backend communicate via REST API calls, with the entire system publicly accessible through Cloud Run URLs.
+We also implemented data drift detection using Evidently AI, which monitors distribution shifts in image statistics (mean, std, min, max) and predicted genre distributions between the training reference data and new production predictions. The prediction database in CSV format is stored in the Cloud Storage bucket and drift reports are generated as HTML.
 
 ### Question 29
 
@@ -676,7 +714,18 @@ We also deployed a Streamlit frontend and a drift monitoring service to Cloud Ru
 >
 > Answer:
 
---- question 29 fill here ---
+The starting point is our local setup, where the codebase is structured using a Cookiecutter template. The system uses a pretrained model from timm. BentoML is implemented as an alternative API service for model inference besides Fast API. The model is first converted to ONNX format using the conversion script, then served through BentoML, which provides efficient ONNX runtime inference. However, frontend development and cloud integration was performed with the Fast API option. Experiment metrics are logged using Weights & Biases, Pytest was used for testing, configurations are managed using Hydra and project dependencies were managed using uv. 
+
+From the local setup, changes to the codebase are committed and pushed to GitHub, which serves as the central version control system. GitHub Actions are configured to automatically trigger continuous integration workflows on pull requests, including unit testing, linting, docker image building, pre commiting. In parallel with Git-based code versioning, DVC is used to version control the data. The data is saved both locally and remotely in Google Cloud Storage (GCS).
+
+To ensure environment reproducibility across development, training and deployment, the project is containerized using Docker. Dockerfiles are also versioned in GitHub and can be used to trigger automated builds via Google Cloud Build. In our setup, we trigger the build manually.
+
+Together the Artifact Registry and Google Cloud Storage provide all required resources for model training on Vertex AI. Vertex AI training jobs pull the Docker image from Artifact Registry and the training data from GCS, train the model and store the resulting trained model artifacts back in GCS. Training metrics and experiment results are logged to Weights & Biases for analysis and model selection, as well as automatically saved to the GCS Bucket.
+
+After a model has been selected, it is deployed using Cloud Run, exposing the model through FastAPI. The deployed service can be validated through load testing using Locust. End users interact with the system via a Streamlit frontend, which communicates with the FastAPI request predictions, monitoring and display results. Lastly, drift monitoring was implemented for model considerations in the future.
+
+![Figure showing overall project architecture and services used.](./figures/Overall_Architecture.png)
+
 
 ### Question 30
 
@@ -715,12 +764,9 @@ Another challenge was converting our model to ONNX as initially the error was no
 
 Student s215811 was in charge of the local data management, creating functions to download, process and save our dataset. They also created the CML workflow for data changes and the initial readme project description. 
 
-
 Student s231439 was in charge of initial uv migration, data processing and training, logging of events in the code, documentation, and passing the functional local actions to the Cloud Services (data, training, deployment).
 
-
 Student s253528 was in charge of GitHub repository configurations, code typing, creating the initial Hydra configuration, creating Docker images, updating GitHub workflows, converting the model to ONNX, creating the BentoML API and adding Prometheus monitoring.
-
 
 Student s253509 was in charge of setting up the initial file structure using cookie cutter, adding an initial model and training procedure, profiling the training code, using Weights & Biases to log training progress and artifacts, running a hyperparameter optimization sweep, adding more pre-commit hooks, creating a frontend for the API, and adding a data drift detection.
 
@@ -729,4 +775,5 @@ Student s242800 was responsible for implementing the FastAPI-based inference API
 All members were part of the brainstorming session for choosing the main idea of the project, the open-source libraries and the model architecture. Everyone has actively contributed to the repository to keep the files up to date. We have also written the report together, focusing on the parts we have worked on. 
 
 We have used ChatGPT, Claude AI and GitHub Copilot to help us debug and write some of our code. 
+
 
